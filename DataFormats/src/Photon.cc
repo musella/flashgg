@@ -1,5 +1,6 @@
 #include "flashgg/DataFormats/interface/Photon.h"
 #include "FWCore/Utilities/interface/Exception.h"
+#include <limits>
 
 using namespace flashgg;
 
@@ -62,6 +63,16 @@ float const Photon::findVertexFloat( const edm::Ptr<reco::Vertex>& vtx, const st
 	
 	return 0.;
 }
+
+float const Photon::findWorstIso(const std::map<edm::Ptr<reco::Vertex>,float> & mp) const
+{
+	float ret = std::numeric_limits<float>::min();
+	for(auto it : mp) {
+		ret = std::max(ret,it.second);
+	}
+	return ret;
+}
+
 
 void Photon::updateEnergy(std::string key, float val) {
 

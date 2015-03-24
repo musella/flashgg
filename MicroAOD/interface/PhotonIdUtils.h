@@ -27,11 +27,16 @@ class CaloTopology;
 
 namespace flashgg {
 
+  class OverlapRemovalAlgo {
+  public:
+	  virtual bool operator()(const pat::Photon& photon, const edm::Ptr<pat::PackedCandidate> & pfcand);
+  };
+  
   class PhotonIdUtils {
 
   public:
     
-    PhotonIdUtils();
+    PhotonIdUtils(OverlapRemovalAlgo * algo=0);
     ~PhotonIdUtils();
 
     void               initialize( );
@@ -64,6 +69,7 @@ namespace flashgg {
     std::shared_ptr<TMVA::Reader> phoIdMva;
 
     void removeOverlappingCandidates(bool x) { removeOverlappingCandidates_ = x; };
+    void deltaPhiRotation(double x) { deltaPhiRotation_ = x; };
     
     
     static void recomputeNonZsClusterShapes(reco::Photon & pho, noZS::EcalClusterLazyTools &tools);
@@ -95,7 +101,9 @@ namespace flashgg {
     
   private: 
     
+    OverlapRemovalAlgo * overlapAlgo_;
     bool removeOverlappingCandidates_;
+    double deltaPhiRotation_;
     
     // photon MVA variables: move to more sophisticated object?
     
