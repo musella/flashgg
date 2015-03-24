@@ -18,6 +18,7 @@
 // #include "HiggsAnalysis/GBRLikelihoodEGTools/interface/EGEnergyCorrectorSemiParm.h"
 #include "DataFormats/PatCandidates/interface/Electron.h"
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
+#include "flashgg/MicroAOD/interface/IsolationAlgoBase.h"
 
 using namespace std;
 using namespace edm;
@@ -72,6 +73,7 @@ namespace flashgg {
     /// EGEnergyCorrectorSemiParm corV8_;      
     bool doOverlapRemovalForIsolation_, useVtx0ForNeutralIso_;
     std::vector<CaloIsoParams> extraCaloIsolations_;
+    std::vector<std::unique_ptr<IsolationAlgoBase> > extraIsoAlgos_;
   };
 
 
@@ -101,14 +103,24 @@ namespace flashgg {
     useVtx0ForNeutralIso_ = iConfig.getParameter<bool>("useVtx0ForNeutralIso");
 
     copyExtraGenInfo_ = iConfig.getParameter<bool>("copyExtraGenInfo");
-    maxGenDeltaR_ = iConfig.getParameter<double>("maxGenDeltaR");
-    
+    maxGenDeltaR_ = iConfig.getParameter<double>("maxGenDeltaR");    
+
     std::vector<ParameterSet> extraCaloIsolations = iConfig.getParameter<std::vector<ParameterSet> >("extraCaloIsolations");
     for(std::vector<ParameterSet>::iterator it=extraCaloIsolations.begin(); it!=extraCaloIsolations.end(); ++it) {
 	    CaloIsoParams p(it->getParameter<bool>("overlapRemoval"),  (PFCandidate::ParticleType)it->getParameter<int>("type"),
 			    it->getParameter<std::vector<double> >("vetoRegions") );
 	    assert( p.vetos_.size() == 7 );
 	    extraCaloIsolations_.push_back(p);
+    }
+    
+    if( iConfig.exists("extraIsolations") ) {
+	    std::vector<ParameterSet> extraIsolationPlugins = iConfig.getParameter<std::vector<ParameterSet> >("extraIsolations");
+	    extraIsoAlgos_.resize(extraIsolationPlugins.size());
+	    for(size_t ip=0; ip<extraIsolationPlugins.size(); ++ip) {
+		    auto & plugin = extraIsolationPlugins[ip];
+		    auto className = plugin.getParameter<std::string>("algo");
+		    extraIsoAlgos_[ip].reset( FlashggIsolationAlgoFactory::get()->create(className,plugin) );
+	    }
     }
     
     useNonZsLazyTools_ = iConfig.getParameter<bool>("useNonZsLazyTools");
@@ -253,10 +265,30 @@ namespace flashgg {
 		      float val = phoTools_.pfCaloIso(pp, pfcandidates->ptrs(), 
 						      p.vetos_[0],p.vetos_[1],p.vetos_[2],p.vetos_[3],p.vetos_[4],p.vetos_[5],p.vetos_[6],
 						      p.type_, neutVtx);
-		      /// cout << "User Isolation " << iso << " " << val << endl;
 		      fg.setUserIso( val, iso );
 	      }
       }
+      
+      if( ! extraIsoAlgos_.empty() ) {
+	      for(auto & algo : extraIsoAlgos_ ) {
+		      std::map<edm::Ptr<reco::Vertex>,float> iso;
+		      algo->begin(*pp,evt,iSetup);
+		      if( algo->hasChargedIsolation() ) {
+			      for(auto & vtx : vertexPointers) {
+				      iso[vtx] = algo->chargedIsolation(pp,vtx,vtxToCandMap);
+			      }
+			      fg.setExtraChIso(algo->name(), iso);
+		      }
+		      if( algo->hasCaloIsolation(PFCandidate::gamma) ) {
+			      fg.setExtraPhoIso(algo->name(),algo->caloIsolation(pp,pfcandidatePointers,PFCandidate::gamma,neutVtx));
+		      }
+		      if( algo->hasCaloIsolation(PFCandidate::h0) ) {
+			      fg.setExtraNeutIso(algo->name(),algo->caloIsolation(pp,pfcandidatePointers,PFCandidate::h0,neutVtx));
+		      }
+		      algo->end(fg);
+	      }
+      }
+      
       phoTools_.removeOverlappingCandidates(doOverlapRemovalForIsolation_);
       
       photonColl->push_back(fg);

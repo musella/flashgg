@@ -11,7 +11,11 @@
 using namespace std;
 using namespace flashgg;
 
-PhotonIdUtils::PhotonIdUtils() : removeOverlappingCandidates_(true) {};
+PhotonIdUtils::PhotonIdUtils(OverlapRemovalAlgo * algo) :  
+	overlapAlgo_(algo), removeOverlappingCandidates_(true), deltaPhiRotation_(0.) 
+{
+}
+
 PhotonIdUtils::~PhotonIdUtils() {
   // These delete commands caused an unpredictable segfault,
   // because phoIdMva was pointing to the same place as either phoIdMva_2012_EB_ or phoIdMva_2012_EE_.
@@ -43,7 +47,7 @@ bool PhotonIdUtils::vetoPackedCand(const pat::Photon& photon, const edm::Ptr<pat
     return (nass > 0);
 }
 
-float PhotonIdUtils::pfIsoChgWrtVtx( edm::Ptr<pat::Photon>& photon, 
+float PhotonIdUtils::pfIsoChgWrtVtx(const edm::Ptr<pat::Photon>& photon, 
 				     const edm::Ptr<reco::Vertex> vtx,  
 				     const flashgg::VertexCandidateMap vtxcandmap,
 				     float coneSize, float coneVetoBarrel, float coneVetoEndcap, 
@@ -68,11 +72,14 @@ float PhotonIdUtils::pfIsoChgWrtVtx( edm::Ptr<pat::Photon>& photon,
     edm::Ptr<pat::PackedCandidate> pfcand = pair_iter->second;
     
     if( abs(pfcand->pdgId()) == 11 || abs(pfcand->pdgId()) == 13 ) continue; //J. Tao not e/mu       
-    if( removeOverlappingCandidates_ && vetoPackedCand(*photon,pfcand) ) { continue; }
+    if( removeOverlappingCandidates_ && 
+	( (overlapAlgo_ == 0 &&  vetoPackedCand(*photon,pfcand)) ||
+	  (overlapAlgo_ != 0 && (*overlapAlgo_)(*photon,pfcand)) ) ) { continue; }
+    
     
     if( pfcand->pt() < ptMin )         continue;    
     float dRTkToVtx  = deltaR( pfcand->momentum().Eta(), pfcand->momentum().Phi(),
-			       SCdirection.Eta(), SCdirection.Phi() );
+			       SCdirection.Eta(), SCdirection.Phi()+deltaPhiRotation_ ); // rotate SC in phi if requested (random cone isolation)
     if( dRTkToVtx > coneSize || dRTkToVtx < coneVeto ) continue;
     
     isovalue += pfcand->pt();
@@ -81,7 +88,7 @@ float PhotonIdUtils::pfIsoChgWrtVtx( edm::Ptr<pat::Photon>& photon,
 }
 
 
-map<edm::Ptr<reco::Vertex>,float> PhotonIdUtils::pfIsoChgWrtAllVtx( edm::Ptr<pat::Photon>& photon, 
+map<edm::Ptr<reco::Vertex>,float> PhotonIdUtils::pfIsoChgWrtAllVtx(const edm::Ptr<pat::Photon>& photon, 
 									 const std::vector<edm::Ptr<reco::Vertex> >& vertices,
 									 const flashgg::VertexCandidateMap vtxcandmap,
 									 float coneSize, float coneVetoBarrel, float coneVetoEndcap, 
@@ -116,7 +123,7 @@ float PhotonIdUtils::pfIsoChgWrtWorstVtx( map<edm::Ptr<reco::Vertex>,float>& vtx
 
 
 
-float PhotonIdUtils::pfCaloIso( edm::Ptr<pat::Photon>& photon, 
+float PhotonIdUtils::pfCaloIso(const edm::Ptr<pat::Photon>& photon, 
 				const std::vector<edm::Ptr<pat::PackedCandidate> >& pfcandidates,
 				float dRMax,
 				float dRVetoBarrel,
@@ -150,13 +157,15 @@ float PhotonIdUtils::pfCaloIso( edm::Ptr<pat::Photon>& photon,
   for( size_t ipf = 0; ipf < pfcandidates.size(); ipf++ ) { 
 
     edm::Ptr<pat::PackedCandidate> pfcand = pfcandidates[ipf]; 
-    
+
     if( pfcand->pdgId() != pdgId ) continue;
     if( photon->isEB() ) if( fabs(pfcand->pt()) < minEnergyBarrel )     continue;  
     if( photon->isEE() ) if( fabs(pfcand->energy()) < minEnergyEndcap ) continue;
-    
-    if( removeOverlappingCandidates_ && vetoPackedCand(*photon,pfcand) ) { continue; }
-    
+
+    if( removeOverlappingCandidates_ && 
+	( (overlapAlgo_ == 0 &&  vetoPackedCand(*photon,pfcand)) ||
+	  (overlapAlgo_ != 0 && (*overlapAlgo_)(*photon,pfcand)) ) ) { continue; }
+
     double vx, vy, vz;
     if( vtx ) {
 	    vx=vtx->x(), vy=vtx->y(), vz=vtx->z();
@@ -170,8 +179,8 @@ float PhotonIdUtils::pfCaloIso( edm::Ptr<pat::Photon>& photon,
 					   );
 
     float dEta = fabs( SCdirectionWrtCandVtx.Eta() - pfcand->momentum().Eta() );
-    float dR   = deltaR( SCdirectionWrtCandVtx.Eta(), SCdirectionWrtCandVtx.Phi(), pfcand->momentum().Eta(), pfcand->momentum().Phi() ); 
-    //// float dPhi = deltaPhi( SCdirectionWrtCandVtx.Phi(),pfcand->momentum().Phi() );
+    float dR   = deltaR( SCdirectionWrtCandVtx.Eta(), SCdirectionWrtCandVtx.Phi()+deltaPhiRotation_, // rotate SC in phi if requested (random cone isolation)
+			 pfcand->momentum().Eta(), pfcand->momentum().Phi() );
 
     if( dEta < maxetaStrip )        continue;
     if( dR < dRVeto || dR > dRMax ) continue;
