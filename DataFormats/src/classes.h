@@ -75,6 +75,8 @@ namespace  { struct dictionary {
         edm::Wrapper<std::pair<edm::Ptr<reco::Vertex>,edm::PtrVector<pat::PackedCandidate> > >    wrp_pai_ptr_vtx_ptr_vec_pac;
         std::map<edm::Ptr<reco::Vertex>,float>                    map_ptr_vtx_flo;
         std::pair<edm::Ptr<reco::Vertex>,float>                   pai_ptr_vtx_flo;
+	std::map<std::string, std::map<edm::Ptr<reco::Vertex>,float> >  map_str_ptr_vtx_flo;
+	std::pair<std::string, std::map<edm::Ptr<reco::Vertex>,float> >  pai_str_ptr_vtx_flo;
         flashgg::Electron						    fgg_ele;
         edm::Ptr<flashgg::Electron> 					  ptr_fgg_ele;
         edm::PtrVector<flashgg::Electron>			      vec_ptr_fgg_ele;
