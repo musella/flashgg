@@ -67,3 +67,7 @@ process.e = cms.EndPath(process.out)
 #                                   fileName = cms.string("commissioningTree.root")
 #)
 #process.p *= process.commissioning
+
+
+from flashgg.MicroAOD.MicroAODCustomize import customize
+customize(process)

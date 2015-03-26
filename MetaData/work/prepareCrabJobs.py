@@ -27,7 +27,7 @@ parser = OptionParser(option_list=[
                     ),
         make_option("-p","--pset",
                     action="store", dest="parameterSet", type="string",
-                    default="../../MicroAOD/test/simple_Producer_test.py", # FIXME should move it to production eventually
+                    default="../../MicroAOD/test/microAODstd.py", # FIXME should move it to production eventually
                     help="CMSSW parameter set. default: %default", 
                     ),
         make_option("-t","--crabTemplate",
@@ -216,19 +216,22 @@ if options.createCrabConfig:
                         "PROCESSED_DSET"  : label,
                         "SPLITTING"       : "FileBased",
                         "OUTLFN"          : "%s/%s/%s" % (options.outputPath,options.campaign,flashggVersion),
-                        "OUTSITE"         : options.outputSite
+                        "OUTSITE"         : options.outputSite,
+                        "PYCFG_PARAMS"    : "dataset=%s" % PrimaryDataset
                        }
         # specific replacements for data and MC
         if sample in data:
             replacements["SPLITTING"]   = "LumiBased"
             replacements["UNITSPERJOB"] = str(options.lumisPerJob),
+            replacements["PYCFG_PARAMS"] += " processType=data"
             ## FIXME: lumi mask, run ranges, etc.
         if sample in sig:
             ## Extra options for signal samples
-            pass
+            replacements["PYCFG_PARAMS"] += " processType=signal"
         if sample in bkg:
             ## Extra options for background samples
-            pass
+            replacements["PYCFG_PARAMS"] += " processType=background"
+
         # open output file
         outfiles = [ open(crabConfigFile, 'w') ]
         pilotFile = None
