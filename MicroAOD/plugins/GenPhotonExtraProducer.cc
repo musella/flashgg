@@ -25,6 +25,8 @@ namespace flashgg {
     EDGetTokenT<View<pat::PackedGenParticle> > genPhotonsToken_;
     EDGetTokenT<View<pat::PackedGenParticle> > genParticlesToken_;
     double isoConeSize_, epsilon0_, n0_;
+    std::vector<int> promptMothers_;
+    flashgg::GenPhotonExtra::match_type defaultType_;
   };
 
 
@@ -33,8 +35,15 @@ namespace flashgg {
     genParticlesToken_(consumes<View<pat::PackedGenParticle> >(iConfig.getParameter<InputTag>("genParticles"))),
     isoConeSize_(iConfig.getParameter<double>("isoConeSize")),
     epsilon0_(iConfig.getParameter<double>("epsilon0")),
-    n0_(iConfig.getParameter<double>("n0"))
+    n0_(iConfig.getParameter<double>("n0")),
+    defaultType_(flashgg::Photon::kUnkown)
   {
+    if(iConfig.exists("promptMothers")) {
+      promptMothers_ = iConfig.getParameter<std::vector<int> >("promptMothers");
+    }
+    if(iConfig.exists("defaultType")) {
+      defaultType_ = static_cast<flashgg::GenPhotonExtra::match_type>(iConfig.getParameter<int>("defaultType")); 
+    }
     produces<vector<flashgg::GenPhotonExtra> >();
   }
 
@@ -50,7 +59,7 @@ namespace flashgg {
     for (auto & genPho : genPhotonPointers ) {
 
 	    flashgg::GenPhotonExtra extra(genPho);
-	    extra.setType(PhotonMCUtils::determineMatchType(*genPho));
+	    extra.setType(PhotonMCUtils::determineMatchType(*genPho,promptMothers_,defaultType_));
 	    extra.setGenIso(PhotonMCUtils::isoSum(*genPho, *genParticles, isoConeSize_));
 	    extra.setFrixioneIso(PhotonMCUtils::frixioneIso(*genPho, *genParticles, isoConeSize_, epsilon0_, n0_));
 	    
