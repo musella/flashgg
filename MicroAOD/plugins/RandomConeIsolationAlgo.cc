@@ -1,5 +1,11 @@
 #include "flashgg/MicroAOD/interface/IsolationAlgoBase.h"
 #include "flashgg/MicroAOD/interface/PhotonIdUtils.h"
+#include "DataFormats/Common/interface/View.h"
+#include "DataFormats/Common/interface/Handle.h"
+#include "DataFormats/Candidate/interface/Candidate.h"
+
+/// #include "FWCore/Utilities/interface/RandomNumberGenerator.h"
+/// #include "CLHEP/Random/RandomEngine.h"
 
 namespace flashgg {
 
@@ -21,6 +27,12 @@ namespace flashgg {
 					assert( photonVetos_.size()  == 6 );
 				}
 				
+				if( conf.exists("vetoCollections") ) {
+					vetoCollections_ = conf.getParameter<std::vector<edm::InputTag> >("vetoCollections"); 
+					veto_ = conf.getParameter<double>("veto");
+					// FIXME: book tokens (required change in IsolationAlgoBase interface)
+				}
+				
 				utils_.removeOverlappingCandidates(conf.getParameter<bool>("doOverlapRemoval"));
 			}
 	  
@@ -36,14 +48,41 @@ namespace flashgg {
 		virtual void end(pat::Photon &);
 		
 	private:
-		double conesize_, deltaPhi_;
+		double conesize_, deltaPhi_, veto_;
+		bool found_;
 		PhotonIdUtils utils_;
 		std::vector<double> chargedVetos_, photonVetos_, neutralVetos_;
+		std::vector<edm::InputTag> vetoCollections_;
 	};
 
-	void RandomConeIsolationAlgo::begin(edm::Ptr<pat::Photon> &,const edm::Event&, const edm::EventSetup &)
+	void RandomConeIsolationAlgo::begin(edm::Ptr<pat::Photon> & pho,const edm::Event& event, const edm::EventSetup &)
 	{
-		deltaPhi_ = 0.5*TMath::Pi();
+		std::vector<edm::Handle<edm::View<reco::Candidate> > > vetos(vetoCollections_.size());
+		
+		for(size_t icoll=0; icoll<vetoCollections_.size(); ++icoll) {
+			event.getByLabel(vetoCollections_[icoll],vetos[icoll]);
+		}
+		
+		found_ = false;
+		std::vector<double> test{0.5*TMath::Pi(), -0.5*TMath::Pi()};
+		for(auto it : test) {
+			deltaPhi_ = it;
+			found_ = true;
+			for(auto & coll: vetos) {
+				for(auto & cand : *coll) {
+					float dEta = pho->eta() - cand.eta();
+					float dPhi = reco::deltaPhi(pho->phi(),cand.phi() + deltaPhi_);
+					float dR = sqrt( dEta*dEta + dPhi*dPhi );
+					if( dR < veto_ ) {
+						found_ = false;
+						break;
+					}
+				}
+				if( ! found_ ) { break; }
+			}
+			if( found_ ) { break; }
+		}
+				
 		utils_.deltaPhiRotation(deltaPhi_);
 	}
 	
@@ -51,7 +90,7 @@ namespace flashgg {
 						     const flashgg::VertexCandidateMap & mp)
 	{
 		if( ! chargedVetos_.empty() ) {
-			return utils_.pfIsoChgWrtVtx(pho,vtx,mp,conesize_,chargedVetos_[0],chargedVetos_[1],chargedVetos_[2]);
+			return found_ ? utils_.pfIsoChgWrtVtx(pho,vtx,mp,conesize_,chargedVetos_[0],chargedVetos_[1],chargedVetos_[2]) : 999.;
 		}
 		return 0.;
 	}
@@ -60,9 +99,9 @@ namespace flashgg {
 						  reco::PFCandidate::ParticleType typ, const reco::Vertex * vtx)
 	{
 		if( typ == reco::PFCandidate::gamma && ! photonVetos_.empty() ) { 
-			return utils_.pfCaloIso(pho, ptrs, conesize_, photonVetos_[0], photonVetos_[1], photonVetos_[2], photonVetos_[3], photonVetos_[4], photonVetos_[5], typ, vtx);
+			return found_ ? utils_.pfCaloIso(pho, ptrs, conesize_, photonVetos_[0], photonVetos_[1], photonVetos_[2], photonVetos_[3], photonVetos_[4], photonVetos_[5], typ, vtx) : 999.;
 		} else if( typ == reco::PFCandidate::h0 && ! neutralVetos_.empty() ) { 
-			return utils_.pfCaloIso(pho, ptrs, conesize_, neutralVetos_[0], neutralVetos_[1], neutralVetos_[2], neutralVetos_[3], neutralVetos_[4], neutralVetos_[5], typ, vtx);
+			return found_ ? utils_.pfCaloIso(pho, ptrs, conesize_, neutralVetos_[0], neutralVetos_[1], neutralVetos_[2], neutralVetos_[3], neutralVetos_[4], neutralVetos_[5], typ, vtx) : 999.;
 		}
 		return 0.;
 	}
