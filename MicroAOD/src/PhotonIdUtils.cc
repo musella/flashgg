@@ -47,7 +47,7 @@ bool PhotonIdUtils::vetoPackedCand(const pat::Photon& photon, const edm::Ptr<pat
     return (nass > 0);
 }
 
-float PhotonIdUtils::pfIsoChgWrtVtx( edm::Ptr<pat::Photon>& photon, 
+float PhotonIdUtils::pfIsoChgWrtVtx(const edm::Ptr<pat::Photon>& photon, 
 				     const edm::Ptr<reco::Vertex> vtx,  
 				     const flashgg::VertexCandidateMap vtxcandmap,
 				     float coneSize, float coneVetoBarrel, float coneVetoEndcap, 
@@ -94,7 +94,7 @@ float PhotonIdUtils::pfIsoChgWrtVtx( edm::Ptr<pat::Photon>& photon,
 }
 
 
-map<edm::Ptr<reco::Vertex>,float> PhotonIdUtils::pfIsoChgWrtAllVtx( edm::Ptr<pat::Photon>& photon, 
+map<edm::Ptr<reco::Vertex>,float> PhotonIdUtils::pfIsoChgWrtAllVtx(const edm::Ptr<pat::Photon>& photon, 
 									 const edm::PtrVector<reco::Vertex>& vertices,
 									 const flashgg::VertexCandidateMap vtxcandmap,
 									 float coneSize, float coneVetoBarrel, float coneVetoEndcap, 
@@ -129,7 +129,7 @@ float PhotonIdUtils::pfIsoChgWrtWorstVtx( map<edm::Ptr<reco::Vertex>,float>& vtx
 
 
 
-float PhotonIdUtils::pfCaloIso( edm::Ptr<pat::Photon>& photon, 
+float PhotonIdUtils::pfCaloIso(const edm::Ptr<pat::Photon>& photon, 
 				const edm::PtrVector<pat::PackedCandidate>& pfcandidates,
 				float dRMax,
 				float dRVetoBarrel,
@@ -163,15 +163,15 @@ float PhotonIdUtils::pfCaloIso( edm::Ptr<pat::Photon>& photon,
   for( size_t ipf = 0; ipf < pfcandidates.size(); ipf++ ) { 
 
     edm::Ptr<pat::PackedCandidate> pfcand = pfcandidates[ipf]; 
-    
+
     if( pfcand->pdgId() != pdgId ) continue;
     if( photon->isEB() ) if( fabs(pfcand->pt()) < minEnergyBarrel )     continue;  
     if( photon->isEE() ) if( fabs(pfcand->energy()) < minEnergyEndcap ) continue;
-    
+
     if( removeOverlappingCandidates_ && 
 	( (overlapAlgo_ == 0 &&  vetoPackedCand(*photon,pfcand)) ||
 	  (overlapAlgo_ != 0 && (*overlapAlgo_)(*photon,pfcand)) ) ) { continue; }
-    
+
     double vx, vy, vz;
     if( vtx ) {
 	    vx=vtx->x(), vy=vtx->y(), vz=vtx->z();

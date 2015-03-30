@@ -36,14 +36,14 @@ namespace flashgg {
 				utils_.removeOverlappingCandidates(conf.getParameter<bool>("doOverlapRemoval"));
 			}
 	  
-		virtual void begin(edm::Ptr<pat::Photon> &,const edm::Event&, const edm::EventSetup &);
+		virtual void begin(const pat::Photon &,const edm::Event&, const edm::EventSetup &);
 		virtual bool hasChargedIsolation() { return ! chargedVetos_.empty(); };
-		virtual float chargedIsolation(edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & );
+		virtual float chargedIsolation(const edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & );
 		virtual bool hasCaloIsolation(reco::PFCandidate::ParticleType typ) { 
 			return  (typ == reco::PFCandidate::gamma && ! photonVetos_.empty() ) || 
 				(typ == reco::PFCandidate::h0    && ! neutralVetos_.empty()); 
 		};
-		virtual float caloIsolation(edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0);
+		virtual float caloIsolation(const edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0);
 		
 		virtual void end(pat::Photon &);
 		
@@ -55,7 +55,7 @@ namespace flashgg {
 		std::vector<edm::InputTag> vetoCollections_;
 	};
 
-	void RandomConeIsolationAlgo::begin(edm::Ptr<pat::Photon> & pho,const edm::Event& event, const edm::EventSetup &)
+	void RandomConeIsolationAlgo::begin(const pat::Photon & pho,const edm::Event& event, const edm::EventSetup &)
 	{
 		std::vector<edm::Handle<edm::View<reco::Candidate> > > vetos(vetoCollections_.size());
 		
@@ -70,8 +70,8 @@ namespace flashgg {
 			found_ = true;
 			for(auto & coll: vetos) {
 				for(auto & cand : *coll) {
-					float dEta = pho->eta() - cand.eta();
-					float dPhi = reco::deltaPhi(pho->phi(),cand.phi() + deltaPhi_);
+					float dEta = pho.eta() - cand.eta();
+					float dPhi = reco::deltaPhi(pho.phi() + deltaPhi_,cand.phi());
 					float dR = sqrt( dEta*dEta + dPhi*dPhi );
 					if( dR < veto_ ) {
 						found_ = false;
@@ -86,7 +86,7 @@ namespace flashgg {
 		utils_.deltaPhiRotation(deltaPhi_);
 	}
 	
-	float RandomConeIsolationAlgo::chargedIsolation(edm::Ptr<pat::Photon> & pho, const edm::Ptr<reco::Vertex> vtx, 
+	float RandomConeIsolationAlgo::chargedIsolation(const edm::Ptr<pat::Photon> & pho, const edm::Ptr<reco::Vertex> vtx, 
 						     const flashgg::VertexCandidateMap & mp)
 	{
 		if( ! chargedVetos_.empty() ) {
@@ -95,7 +95,7 @@ namespace flashgg {
 		return 0.;
 	}
 	
-	float RandomConeIsolationAlgo::caloIsolation(edm::Ptr<pat::Photon> & pho, const edm::PtrVector<pat::PackedCandidate>& ptrs, 
+	float RandomConeIsolationAlgo::caloIsolation(const edm::Ptr<pat::Photon> & pho, const edm::PtrVector<pat::PackedCandidate>& ptrs, 
 						  reco::PFCandidate::ParticleType typ, const reco::Vertex * vtx)
 	{
 		if( typ == reco::PFCandidate::gamma && ! photonVetos_.empty() ) { 

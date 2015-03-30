@@ -272,7 +272,7 @@ namespace flashgg {
       if( ! extraIsoAlgos_.empty() ) {
 	      for(auto & algo : extraIsoAlgos_ ) {
 		      std::map<edm::Ptr<reco::Vertex>,float> iso;
-		      algo->begin(pp,evt,iSetup);
+		      algo->begin(*pp,evt,iSetup);
 		      if( algo->hasChargedIsolation() ) {
 			      for(auto & vtx : vertexPointers) {
 				      iso[vtx] = algo->chargedIsolation(pp,vtx,vtxToCandMap);

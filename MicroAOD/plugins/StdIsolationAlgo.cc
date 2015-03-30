@@ -24,14 +24,14 @@ namespace flashgg {
 				utils_.removeOverlappingCandidates(conf.getParameter<bool>("doOverlapRemoval"));
 			}
 	  
-		virtual void begin(edm::Ptr<pat::Photon> &,const edm::Event&, const edm::EventSetup &);
+		virtual void begin(const pat::Photon &,const edm::Event&, const edm::EventSetup &);
 		virtual bool hasChargedIsolation() { return ! chargedVetos_.empty(); };
-		virtual float chargedIsolation(edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & );
+		virtual float chargedIsolation(const edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & );
 		virtual bool hasCaloIsolation(reco::PFCandidate::ParticleType typ) { 
 			return  (typ == reco::PFCandidate::gamma && ! photonVetos_.empty() ) || 
 				(typ == reco::PFCandidate::h0    && ! neutralVetos_.empty()); 
 		};
-		virtual float caloIsolation(edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0);
+		virtual float caloIsolation(const edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0);
 		
 		virtual void end(pat::Photon &);
 		
@@ -41,11 +41,11 @@ namespace flashgg {
 		std::vector<double> chargedVetos_, photonVetos_, neutralVetos_;
 	};
 
-	void StdIsolationAlgo::begin(edm::Ptr<pat::Photon> &,const edm::Event&, const edm::EventSetup &)
+	void StdIsolationAlgo::begin(const pat::Photon &,const edm::Event&, const edm::EventSetup &)
 	{
 	}
 	
-	float StdIsolationAlgo::chargedIsolation(edm::Ptr<pat::Photon> & pho, const edm::Ptr<reco::Vertex> vtx, 
+	float StdIsolationAlgo::chargedIsolation(const edm::Ptr<pat::Photon> & pho, const edm::Ptr<reco::Vertex> vtx, 
 						     const flashgg::VertexCandidateMap & mp)
 	{
 		if( ! chargedVetos_.empty() ) {
@@ -55,7 +55,7 @@ namespace flashgg {
 		/// return utils_.pfIsoChgWrtVtx(pho,vtx,mp,conesize_,0.02,0.02,0.1);
 	}
 	
-	float StdIsolationAlgo::caloIsolation(edm::Ptr<pat::Photon> & pho, const edm::PtrVector<pat::PackedCandidate>& ptrs, 
+	float StdIsolationAlgo::caloIsolation(const edm::Ptr<pat::Photon> & pho, const edm::PtrVector<pat::PackedCandidate>& ptrs, 
 						  reco::PFCandidate::ParticleType typ, const reco::Vertex * vtx)
 	{
 		if( typ == reco::PFCandidate::gamma && ! photonVetos_.empty() ) { 

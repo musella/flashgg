@@ -29,7 +29,7 @@ namespace flashgg {
 
   class OverlapRemovalAlgo {
   public:
-	  virtual bool operator()(const pat::Photon& photon, const edm::Ptr<pat::PackedCandidate> & pfcand);
+	  virtual bool operator()(const pat::Photon& photon, const edm::Ptr<pat::PackedCandidate> & pfcand) = 0;
   };
   
   class PhotonIdUtils {
@@ -41,18 +41,18 @@ namespace flashgg {
 
     void               initialize( );
 
-    float              pfIsoChgWrtVtx( edm::Ptr<pat::Photon>&, 
+    float              pfIsoChgWrtVtx(const edm::Ptr<pat::Photon>&, 
 				       const edm::Ptr<reco::Vertex>,
 				       const flashgg::VertexCandidateMap,
 				       float, float, float, float );
-    std::map<edm::Ptr<reco::Vertex>,float> pfIsoChgWrtAllVtx( edm::Ptr<pat::Photon>&, 
+    std::map<edm::Ptr<reco::Vertex>,float> pfIsoChgWrtAllVtx(const edm::Ptr<pat::Photon>&, 
 							      const edm::PtrVector<reco::Vertex>&,
 							      const flashgg::VertexCandidateMap, 
 							      float, float, float, float );
 
     float              pfIsoChgWrtWorstVtx( std::map<edm::Ptr<reco::Vertex>,float>&);
 
-    float              pfCaloIso( edm::Ptr<pat::Photon>&, 
+    float              pfCaloIso(const edm::Ptr<pat::Photon>&, 
 				   const edm::PtrVector<pat::PackedCandidate>&, 
 				  float, float, float, float, float, float, float, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0);
     

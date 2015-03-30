@@ -20,11 +20,11 @@ namespace flashgg {
 	  IsolationAlgoBase(const edm::ParameterSet& conf)  : name_(conf.getParameter<std::string>("name") ) {}
 	  virtual ~IsolationAlgoBase();
 	  
-	  virtual void begin(edm::Ptr<pat::Photon> &,const edm::Event&, const edm::EventSetup &) {};
+	  virtual void begin(const pat::Photon &,const edm::Event&, const edm::EventSetup &) {};
 	  virtual bool hasChargedIsolation() = 0;	  
-	  virtual float chargedIsolation(edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & ) = 0;
+	  virtual float chargedIsolation(const edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & ) = 0;
 	  virtual bool hasCaloIsolation(reco::PFCandidate::ParticleType) = 0;
-	  virtual float caloIsolation(edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0) = 0;
+	  virtual float caloIsolation(const edm::Ptr<pat::Photon> &, const edm::PtrVector<pat::PackedCandidate>&, reco::PFCandidate::ParticleType, const reco::Vertex * vtx=0) = 0;
 	  
 	  virtual void end(pat::Photon &) {};
 	  
