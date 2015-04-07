@@ -30,6 +30,7 @@ namespace flashgg
 		
 	private:
 		bool pass(const Photon & pho) const;
+		bool passInverted(const Photon & pho) const;
 		edm::EDGetTokenT<double> rhoToken_;
 		mutable double rho_;
 
@@ -38,7 +39,9 @@ namespace flashgg
 		selector_type selector_;
 		// category -> vector< <min,max,rhocorr> >
 		std::map<std::string,std::vector<std::tuple<functor_type,functor_type,functor_type> > >  selections_;
-
+		std::vector<int> ignoreCuts_, invertCuts_;
+		int invertNtimes_;
+		
 	};
 
 }
