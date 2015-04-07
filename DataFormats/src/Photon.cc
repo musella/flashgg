@@ -50,6 +50,19 @@ bool Photon::hasEnergyAtStep(std::string key) const {
 }
 
 
+float const Photon::findVertex0Float(const std::map<edm::Ptr<reco::Vertex>,float> & mp) const 
+{
+	for(std::map<edm::Ptr<reco::Vertex>,float>::const_iterator it=mp.begin(); it!=mp.end(); ++it) {
+		if( it->first.key() == 0 ) { 
+			return  it->second;
+		}
+	}
+	
+	throw cms::Exception("Missing Data") << "could not find value for vertex 0\n";;
+	
+	return 0.;
+}
+
 float const Photon::findVertexFloat( const edm::Ptr<reco::Vertex>& vtx, const std::map<edm::Ptr<reco::Vertex>,float> & mp, bool lazy) const 
 {
 	lazy = lazy && (vtx.id() == edm::ProductID(0,0));

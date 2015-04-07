@@ -76,9 +76,15 @@ namespace flashgg {
     std::map<edm::Ptr<reco::Vertex>,float> const pfChgIso04() const {return pfChgIso04_;};
     std::map<edm::Ptr<reco::Vertex>,float> const pfChgIso03() const {return pfChgIso03_;};
     std::map<edm::Ptr<reco::Vertex>,float> const pfChgIso02() const {return pfChgIso02_;};
+    
     float const pfChgIso04WrtVtx( const edm::Ptr<reco::Vertex>& vtx, bool lazy=false ) const { return findVertexFloat(vtx,pfChgIso04_,lazy); }; // if lazy flag is true only compare key (needed since fwlite does not fill provenance info)
     float const pfChgIso03WrtVtx( const edm::Ptr<reco::Vertex>& vtx, bool lazy=false ) const { return findVertexFloat(vtx,pfChgIso03_,lazy); }; // if lazy flag is true only compare key (needed since fwlite does not fill provenance info)
     float const pfChgIso02WrtVtx( const edm::Ptr<reco::Vertex>& vtx, bool lazy=false ) const { return findVertexFloat(vtx,pfChgIso02_,lazy); }; // if lazy flag is true only compare key (needed since fwlite does not fill provenance info)
+    
+    float const pfChgIso04WrtVtx0() const { return findVertex0Float(pfChgIso04_); }; // WARNING: no guarantee that vertex 0 is the correct one
+    float const pfChgIso03WrtVtx0() const { return findVertex0Float(pfChgIso03_); }; // WARNING: no guarantee that vertex 0 is the correct one
+    float const pfChgIso02WrtVtx0() const { return findVertex0Float(pfChgIso02_); }; // WARNING: no guarantee that vertex 0 is the correct one
+    
     float const pfChgIsoWrtWorstVtx04() const {return pfChgIsoWrtWorstVtx04_;};
     float const pfChgIsoWrtWorstVtx03() const {return pfChgIsoWrtWorstVtx03_;};
     float const pfChgIsoWrtChosenVtx02() const {return pfChgIsoWrtChosenVtx02_;};
@@ -102,6 +108,8 @@ namespace flashgg {
 	std::map<std::string, std::map<edm::Ptr<reco::Vertex>,float> >::const_iterator it = extraChargedIsolations_.find(key); 
 	return it != extraChargedIsolations_.end() ? it->second : std::map<edm::Ptr<reco::Vertex>,float>();
     };
+    
+    float const extraChgIsoWrtVtx0(const std::string &key) const  { return findVertex0Float(extraChIso(key)); };
     float const extraChgIsoWrtVtx(const std::string &key, const edm::Ptr<reco::Vertex>& vtx, bool lazy=false ) const { return findVertexFloat(vtx,extraChIso(key),lazy); };
     float const extraChgIsoWrtWorstVtx(const std::string &key) const { return findWorstIso(extraChIso(key));  };
     
@@ -125,6 +133,7 @@ namespace flashgg {
 
   private:
     float const findVertexFloat(const edm::Ptr<reco::Vertex>& vtx, const std::map<edm::Ptr<reco::Vertex>,float> & mp, bool lazy) const;
+    float const findVertex0Float(const std::map<edm::Ptr<reco::Vertex>,float> & mp) const;
     float const findWorstIso(const std::map<edm::Ptr<reco::Vertex>,float> & mp) const;
     
     float sipip_;
