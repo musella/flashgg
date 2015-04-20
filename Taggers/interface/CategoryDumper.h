@@ -61,7 +61,7 @@ namespace flashgg {
     public:
         typedef ObjectT object_type;
         typedef FunctorT functor_type;
-        typedef StepWiseFunctor<ObjectT,FunctorT> stepwise_functor_type;
+        typedef StepWiseFunctor<ObjectT, FunctorT> stepwise_functor_type;
         typedef MVAComputer<object_type, functor_type> mva_type;
         typedef FunctorTrait<object_type> trait_type;
         typedef FunctorWrapper<object_type, functor_type> wrapped_functor_type;
@@ -75,7 +75,7 @@ namespace flashgg {
         void bookTree( TFileDirectory &fs, const char *weightVar, const std::map<std::string, std::string> &replacements );
         void bookRooDataset( RooWorkspace &ws, const char *weightVar, const std::map<std::string, std::string> &replacements );
 
-        void fill( const object_type &obj, double weight );
+        void fill( const object_type &obj, double weight, int n_cand = 0 );
 
     private:
         std::string name_;
@@ -84,6 +84,7 @@ namespace flashgg {
         std::vector<std::tuple<float, std::shared_ptr<trait_type>, int, double, double> > variables_;
         std::vector<std::tuple<std::string, int, std::vector<double>, int, std::vector<double>, TH1 *> > histograms_;
 
+        int n_cand_;
         float weight_;
         RooArgSet rooVars_;
         RooAbsData *dataset_;
@@ -110,9 +111,9 @@ namespace flashgg {
             auto nbins = var.getUntrackedParameter<int>( "nbins", 0 );
             auto vmin = var.getUntrackedParameter<double>( "vmin", numeric_limits<double>::min() );
             auto vmax = var.getUntrackedParameter<double>( "vmax", numeric_limits<double>::max() );
-            if( var.existsAs<edm::ParameterSet>("expr") ) {
+            if( var.existsAs<edm::ParameterSet>( "expr" ) ) {
                 auto expr = var.getParameter<edm::ParameterSet>( "expr" );
-                auto name = var.getUntrackedParameter<string>( "name");
+                auto name = var.getUntrackedParameter<string>( "name" );
                 stepwise_functors_.push_back( std::shared_ptr<wrapped_stepwise_functor_type>( new wrapped_stepwise_functor_type( new stepwise_functor_type( expr ) ) ) );
                 names_.push_back( name );
                 variables_.push_back( make_tuple( 0., stepwise_functors_.back(), nbins, vmin, vmax ) );
@@ -124,7 +125,7 @@ namespace flashgg {
                 variables_.push_back( make_tuple( 0., functors_.back(), nbins, vmin, vmax ) );
             }
         }
-        
+
         if( cfg.existsAs<vector<edm::ParameterSet> >( "mvas" ) ) {
             auto mvas = cfg.getParameter<vector<edm::ParameterSet> >( "mvas" );
             for( auto &mva : mvas ) {
@@ -202,6 +203,7 @@ namespace flashgg {
     void CategoryDumper<F, O>::bookTree( TFileDirectory &fs, const char *weightName, const std::map<std::string, std::string> &replacements )
     {
         tree_ = fs.make<TTree>( formatString( name_, replacements ).c_str(), formatString( name_, replacements ).c_str() );
+        tree_->Branch( "candidate_id", &n_cand_, "candidate_id/I" );
         tree_->Branch( weightName, &weight_ );
         for( size_t iv = 0; iv < names_.size(); ++iv ) {
             if( ! dumpOnly_.empty() && find( dumpOnly_.begin(), dumpOnly_.end(), names_[iv] ) == dumpOnly_.end() ) { continue; }
@@ -244,8 +246,9 @@ namespace flashgg {
     }
 
     template<class F, class O>
-    void CategoryDumper<F, O>::fill( const object_type &obj, double weight )
+    void CategoryDumper<F, O>::fill( const object_type &obj, double weight, int n_cand )
     {
+        n_cand_ = n_cand;
         weight_ = weight;
         if( dataset_ ) {
             dynamic_cast<RooRealVar &>( rooVars_["weight"] ).setVal( weight_ );
