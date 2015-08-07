@@ -64,6 +64,11 @@ class JobConfig(object):
                                VarParsing.VarParsing.multiplicity.singleton, # singleton or list
                                VarParsing.VarParsing.varType.int,          # string, int, or float
                                "jobId")
+        self.options.register ('lastAttempt',
+                       False, # default value
+                       VarParsing.VarParsing.multiplicity.singleton, # singleton or list
+                       VarParsing.VarParsing.varType.bool,          # string, int, or float
+                       "lastAttempt")
         self.options.register ('dryRun',
                        False, # default value
                        VarParsing.VarParsing.multiplicity.singleton, # singleton or list
