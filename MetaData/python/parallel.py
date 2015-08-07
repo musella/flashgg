@@ -81,7 +81,7 @@ class LsfJob:
                     break
             
         if self.async:
-            return self.exitStatus, out
+            return self.exitStatus, (out,(self.jobName,self.jobid))
 
         return self.handleOutput()
     
@@ -183,18 +183,33 @@ class Parallel:
         while threading.activeCount() > self.maxThreads:
             sleep(1)
         
+        ret = (None,None)
         if not ( self.lsfQueue and  self.asyncLsf ):
             thread = Thread(None,wrap)
             thread.start()
         else:
-            wrap(interactive=True)
+            ret = wrap(interactive=True)
             
             
         self.sem.acquire()
 	self.njobs += 1
         self.sem.release()
         
-    
+        return ret
+
+    def addJob(self,cmd,args,batchId,jobName=None):
+        if not self.asyncLsf:
+            return
+        
+        job = LsfJob(self.lsfQueue,jobName,async=True)
+        job.jobid = batchId
+        job.cmd = " ".join([cmd]+args)
+        self.lsfJobs.put(job)
+
+        self.sem.acquire()
+	self.njobs += 1
+        self.sem.release()
+        
     def getJobId(self):
         self.sem.acquire()
         ret = self.jobId
