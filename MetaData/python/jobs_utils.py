@@ -60,6 +60,8 @@ class JobsManager(object):
                 make_option("--sync-lsf",dest="asyncLsf",action="store_false",default=True,
                             help="Run LSF jobs in sync mode (with -K). This will spawn one thread per job. Use only if you know what you are doing."
                             " default: False"),
+                make_option("--summary",dest="summary",action="store_true",default=False,
+                            help="Print jobs summary and exit"),
                 make_option("-o","--output",dest="output",type="string",
                             default="output.root", help="output file name. default: %default"),
                 make_option("-d","--outputDir",dest="outputDir",type="string",
@@ -114,6 +116,9 @@ class JobsManager(object):
         self.parallel = Parallel(self.options.ncpu,lsfQueue=self.options.queue,lsfJobName="%s/runJobs" % self.options.outputDir,
                                  asyncLsf=self.options.asyncLsf)
         
+        if self.options.summary:
+            self.options.dry_run = True
+            
         self.jobs = None
         if self.options.cont:
             if self.options.asyncLsf:
@@ -122,13 +127,15 @@ class JobsManager(object):
             self.firstRun()
             
         self.monitor()
-    
+        self.parallel.stop()
+
     def loadLsfMon(self):
         
         with open("%s/task_config.json" % (self.options.outputDir), "r" ) as cfin:
             task_config = json.loads(cfin.read())
         jobs = task_config["jobs"]
         
+        self.parallel.setJobId(task_config.get("last_job_id",1))
         for job in jobs:
             cmd, args, outfile, nsub, ret, batchId = job
             if type(batchId) == tuple or type(batchId) == list:
@@ -212,7 +219,7 @@ class JobsManager(object):
                             ##   - handle output
                             ##   - store log files
                             ret,out = parallel.run(job,iargs)[-1]
-                            if self.options.asyncLsf:
+                            if self.options.queue and self.options.asyncLsf:
                                 batchId = out[1]
                         ## outfiles.append( outfile.replace(".root","_%d.root" % ijob) )
                         ## output = self.getHadd(out,outfile.replace(".root","_%d.root" % ijob))
@@ -233,7 +240,7 @@ class JobsManager(object):
                     batchId = -1
                     if not options.dry_run:
                         ret,out = parallel.run(job,jobargs)[-1]
-                        if self.options.asyncLsf:
+                        if self.options.queue and self.options.asyncLsf:
                             batchId = out[1]
                             
                     outfiles.append( output )
@@ -253,6 +260,7 @@ class JobsManager(object):
 
     def storeTaskConfig(self,task_config):
         with open("%s/task_config.json" % (self.options.outputDir), "w+" ) as cfout:
+            task_config["last_job_id"] = self.parallel.currJobId()
             cfout.write( json.dumps(task_config,indent=4) )
             cfout.close()
             
@@ -268,11 +276,15 @@ class JobsManager(object):
         poutfiles = task_config["process_output"]
         outfiles  = task_config["output"]
         outputPfx = task_config["outputPfx"]
+
+        self.task_config = task_config
         
+        if options.summary:
+            self.printSummary()
+            return
 
         if not options.dry_run:
             ## FIXME: job resubmission
-            self.task_config = task_config
             returns = self.wait(parallel,self)
             
         if options.hadd:
@@ -324,10 +336,6 @@ class JobsManager(object):
         jobargs = jobargs[1:]
         for ijob in self.task_config["jobs"]:
             inam,iargs = ijob[0:2]
-            ### print inam, job, inam == job
-            ### for i,a in enumerate(iargs):
-            ###     b = jobargs[i]
-            ###     print a, b,  a == b
             if inam == job and iargs == jobargs:
                 ijob[4] = ret[0]
                 if ret[0] != 0:
@@ -338,9 +346,9 @@ class JobsManager(object):
                         ijob[3] += 1
                         if ijob[3] == self.maxResub:
                             iargs.append("lastAttempt=1")                        
-                        ret,out = self.parallel.run(inam,iargs)[-1]
-                        if self.options.asyncLsf:
-                            ijob[4] = out[1]
+                        ret,out = self.parallel.run(inam,iargs,jobName=ijob[5][0])[-1]
+                        if self.options.queue and self.options.asyncLsf:
+                            ijob[5] = out[1]
                         print "------------"
                         return 1
                     else:
@@ -361,3 +369,35 @@ class JobsManager(object):
             if line.startswith("maxJobs:"):
                 return int(line.replace("maxJobs:",""))
         return -1
+    
+    def printSummary(self):
+        
+        jobs = self.task_config["jobs"]
+        procs = self.task_config["datasets_output"]
+        
+        status = {}
+        for job in jobs:
+            cmd, args, outfile, nsub, ret, batchId = job
+            status[outfile] = (nsub,ret)
+            
+        for proc,out in procs.iteritems():
+            outfile,outfiles = out
+            finished = []
+            missing  = {}
+            for jfile in outfiles:
+                nsub,ret = status[jfile]
+                if ret != 0:
+                    if not nsub in missing:
+                        missing[nsub] = []
+                    missing[nsub].append( jfile )
+                else:
+                    finished.append(jfile)
+            print "----------"
+            print "process:           %s " % outfile.replace(".root","")
+            print "njobs:             %d " % len(outfiles)
+            print "finished:          %d " % len(finished)
+            for nsub,lst in missing.iteritems():
+                print "submitted %d times: %d"  % (nsub, len(missing))
+            print 
+                
+                
