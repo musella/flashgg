@@ -13,7 +13,8 @@ namespace flashgg {
     {
     public:
         RandomConeIsolationAlgo( const edm::ParameterSet &conf )  : IsolationAlgoBase( conf ),
-            conesize_( conf.getParameter<double>( "coneSize" ) )
+                                                                    conesize_( conf.getParameter<double>( "coneSize" ) ), 
+                                                                    doFixedDeltaPhi_(false)
         {
             if( conf.exists( "charged" ) ) {
                 chargedVetos_ = conf.getParameter<std::vector<double> >( "charged" );
@@ -28,6 +29,11 @@ namespace flashgg {
                 assert( photonVetos_.size()  == 6 );
             }
 
+            if( conf.exists( "deltaPhi" ) ) {
+                doFixedDeltaPhi_ = true;
+                fixedDeltaPhi_ = conf.getParameter<double>("deltaPhi");
+            }
+                
             if( conf.exists( "vetoCollections" ) ) {
                 vetoCollections_ = conf.getParameter<std::vector<edm::InputTag> >( "vetoCollections" );
                 veto_ = conf.getParameter<double>( "veto" );
@@ -51,8 +57,8 @@ namespace flashgg {
         virtual void end( pat::Photon & );
 
     private:
-        double conesize_, deltaPhi_, veto_;
-        bool found_;
+        double conesize_, deltaPhi_, veto_, fixedDeltaPhi_;
+        bool found_, doFixedDeltaPhi_;
         PhotonIdUtils utils_;
         std::vector<double> chargedVetos_, photonVetos_, neutralVetos_;
         std::vector<edm::InputTag> vetoCollections_;
@@ -68,6 +74,10 @@ namespace flashgg {
 
         found_ = false;
         std::vector<double> test{0.5 * TMath::Pi(), -0.5 * TMath::Pi()};
+        if( doFixedDeltaPhi_ ) { 
+            test.resize(1); 
+            test[0] = fixedDeltaPhi_;
+        }
         for( auto it : test ) {
             deltaPhi_ = it;
             found_ = true;
