@@ -25,10 +25,10 @@ def shell_expand(string):
     return None
 
 # -------------------------------------------------------------------------------
-def dumpCfg(options):
+def dumpCfg(options,skip=[]):
     cfg = {}
     for key,val in options.__dict__.iteritems():
-        if not key.startswith("__opt__") and key != "dumpCfg":
+        if not key.startswith("__opt__") and key != "dumpCfg" and not key in skip:
             cfg[key] = val
     return json.dumps( cfg,indent=4)
 
@@ -118,6 +118,7 @@ class JobsManager(object):
         
         if self.options.summary:
             self.options.dry_run = True
+            self.options.cont = True
             
         self.jobs = None
         if self.options.cont:
@@ -142,7 +143,7 @@ class JobsManager(object):
                 jobName,batchId = batchId
             else:
                 jobName=None
-            if ret != 0:
+            if ret != 0 and nsub < self.options.maxResub:
                 self.parallel.addJob(cmd,args,batchId,jobName)
             
 
@@ -168,7 +169,7 @@ class JobsManager(object):
         ## options.cmdLine += " %s" % (" ".join(args))
         options.cmdLine = str(" ".join(args))
         with open("%s/config.json" % (options.outputDir), "w+" ) as fout:
-            fout.write( dumpCfg(options) )
+            fout.write( dumpCfg(options,skip=["dry_run","summary"]) )
             
         
         
@@ -346,9 +347,10 @@ class JobsManager(object):
                         ijob[3] += 1
                         if ijob[3] == self.maxResub:
                             iargs.append("lastAttempt=1")                        
-                        ret,out = self.parallel.run(inam,iargs,jobName=ijob[5][0])[-1]
+                        jobName = ijob[5][0] if self.options.queue else None
+                        out = self.parallel.run(inam,iargs,jobName=jobName)
                         if self.options.queue and self.options.asyncLsf:
-                            ijob[5] = out[1]
+                            ijob[5] = out[-1][1][1]
                         print "------------"
                         return 1
                     else:
@@ -397,7 +399,7 @@ class JobsManager(object):
             print "njobs:             %d " % len(outfiles)
             print "finished:          %d " % len(finished)
             for nsub,lst in missing.iteritems():
-                print "submitted %d times: %d"  % (nsub, len(missing))
+                print "submitted %d times: %d"  % (nsub, len(lst))
             print 
                 
                 

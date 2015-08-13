@@ -222,11 +222,9 @@ class SamplesManager(object):
 
         ## for dsetName,ifile,fName,ret,out in outcomes:
         nfailed = 0
-        print outcomes
         for oc in outcomes:
-            print oc
             ign1, ign2, outcome= oc
-        ## for ign1, ign2, outcome in outcomes:
+            ## for ign1, ign2, outcome in outcomes:
             dsetName,ifile,fName,ret,out = outcome
             info = catalog[dsetName]["files"][ifile]
             if info["name"] != fName:
@@ -586,7 +584,7 @@ class SamplesManagerCli(SamplesManager):
                      "eosimport <list_of_folders>   imports datasets from EOS", 
                      "list                          lists datasets in catalog", 
                      "review                        review catalog to remove datasets", 
-                     "check      [wildcard]         check duplicate files and errors in datasets and mark bad files"
+                     "check      [wildcard]         check duplicate files and errors in datasets and mark bad files",
                      "checklite  [wildcard]         check for duplicate files in datasets"
                      ]
         
@@ -621,8 +619,13 @@ Commands:
                             ),
                 make_option("-c","--continue",
                             dest="doContinue",action="store_true",
-                            default="False",
+                            default=False,
                             help="Continue previous check",
+                            ),
+                make_option("--force",
+                            dest="doForce",action="store_true",
+                            default=False,
+                            help="Force actions",
                             ),
                 make_option("--load",  # special option to load whole configuaration from JSON
                             action="callback",callback=Load(),dest="__opt__",
@@ -654,8 +657,11 @@ Commands:
         
         (options,args) = (self.options,self.args)
         
+        print options
         self.mn = SamplesManager("$CMSSW_BASE/src/%s/MetaData/data/%s/datasets.json" % (options.metaDataSrc,options.campaign),
-                                 dbs_instance=options.dbs_instance,queue=options.queue,maxThreads=options.max_threads,doContinue=options.doContinue)
+                                 dbs_instance=options.dbs_instance,
+                                 force=options.doForce,
+                                 queue=options.queue,maxThreads=options.max_threads,doContinue=options.doContinue)
         
         ## pprint( mn.cross_sections_ )
         if len(args) == 0:

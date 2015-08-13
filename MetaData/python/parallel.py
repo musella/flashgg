@@ -175,8 +175,11 @@ class Parallel:
             thread.start()
         
             
-    def run(self,cmd,args,interactive=False):
-        wrap = Wrap( self, (cmd,args,interactive), self.returned, self.running )
+    def run(self,cmd,args,interactive=False,jobName=None):
+        myargs = [cmd,args,interactive]
+        if jobName:
+            myargs.append(jobName)
+        wrap = Wrap( self, myargs, self.returned, self.running )
         if interactive:
             return wrap(interactive=True)
         
@@ -235,7 +238,7 @@ class Parallel:
             cmd = "%s %s" % (cmd, " ".join(args) )
             args = (cmd,)
             if self.lsfQueue and not interactive:
-                if not jobId:
+                if not jobName:
                     jobName = "%s%d" % (self.lsfJobName,self.getJobId())
                 cmd = LsfJob(self.lsfQueue,jobName,async=self.asyncLsf)
             else:
