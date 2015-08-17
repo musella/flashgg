@@ -274,12 +274,21 @@ namespace flashgg {
 
             if( ! extraIsoAlgos_.empty() ) {
                 for( auto &algo : extraIsoAlgos_ ) {
-                    std::map<edm::Ptr<reco::Vertex>, float> iso;
                     algo->begin( *pp, evt, iSetup );
                     if( algo->hasChargedIsolation() ) {
+                        std::map<edm::Ptr<reco::Vertex>, float> iso;
                         auto vpts = vertices->ptrs();
-                        for( auto &vtx : vpts ) {
-                            iso[vtx] = algo->chargedIsolation( pp, vtx, vtxToCandMap );
+                        size_t maxVtx = vpts.size();
+                        if( algo->maxVtx()>0 && algo->maxVtx()<(int)maxVtx ) { maxVtx = algo->maxVtx(); }
+                        if( maxVtx > 0 ) {
+                            size_t ivtx = 0;
+                            std::pair<edm::Ptr<reco::Vertex>,float> worstVertex(std::make_pair(vpts.at(0),0));
+                            for( auto &vtx : vpts ) {
+                                float viso = algo->chargedIsolation( pp, vtx, vtxToCandMap );
+                                if( ivtx++ < maxVtx ) { iso[vtx] = viso; }
+                                if( algo->computeWorstVtx() && viso > worstVertex.second ) { worstVertex = std::make_pair(vtx,viso); }
+                            }
+                            if( algo->computeWorstVtx() ) { iso.insert(worstVertex); }
                         }
                         fg.setExtraChIso( algo->name(), iso );
                     }

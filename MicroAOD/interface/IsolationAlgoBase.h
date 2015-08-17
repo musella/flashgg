@@ -18,11 +18,22 @@ namespace flashgg {
     {
 
     public:
-        IsolationAlgoBase( const edm::ParameterSet &conf )  : name_( conf.getParameter<std::string>( "name" ) ) {}
+        IsolationAlgoBase( const edm::ParameterSet &conf )  : name_( conf.getParameter<std::string>( "name" ) ),
+                                                              maxVtx_(-1), computeWorstVtx_(false) {
+            if( conf.exists( "maxVtx" ) ) {
+                maxVtx_ = conf.getParameter<int>("maxVtx");
+            }
+            if( conf.exists( "computeWorstVtx" ) ) {
+                maxVtx_ = conf.getParameter<bool>("computeWorstVtx");
+            }
+
+        }
         virtual ~IsolationAlgoBase();
 
         virtual void begin( const pat::Photon &, const edm::Event &, const edm::EventSetup & ) {};
         virtual bool hasChargedIsolation() = 0;
+        virtual int  maxVtx() const { return maxVtx_; }
+        virtual bool computeWorstVtx() const { return computeWorstVtx_; }
         virtual float chargedIsolation( const edm::Ptr<pat::Photon> &, const edm::Ptr<reco::Vertex>, const flashgg::VertexCandidateMap & ) = 0;
         virtual bool hasCaloIsolation( reco::PFCandidate::ParticleType ) = 0;
         virtual float caloIsolation( const edm::Ptr<pat::Photon> &, const std::vector<edm::Ptr<pat::PackedCandidate> > &, reco::PFCandidate::ParticleType,
@@ -32,8 +43,11 @@ namespace flashgg {
 
         std::string name() const { return name_; };
 
-    private:
+    protected:
         std::string name_;
+        int maxVtx_;
+        bool computeWorstVtx_;
+
     };
 }
 
