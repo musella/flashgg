@@ -58,6 +58,7 @@ class SamplesManager(object):
         self.maxThreads_ = maxThreads
         self.force_ = force
         self.continue_ = doContinue
+        self.just_open_ = False
 
     def importFromDAS(self,list_datasets):
         """
@@ -197,12 +198,13 @@ class SamplesManager(object):
         """
         pass
 
-    def checkAllDatasets(self,match=None,light=False):
+    def checkAllDatasets(self,match=None,light=False,justOpen=False):
         """
         Look for corrupted files in the whole catalog.
         """
         catalog = self.readCatalog()
         
+        self.just_open_ = justOpen
         self.parallel_ = Parallel(50,self.queue_,maxThreads=self.maxThreads_,asyncLsf=True,lsfJobName=".fgg/job")
         ## self.parallel_ = Parallel(1,self.queue_)
 
@@ -235,13 +237,14 @@ class SamplesManager(object):
                     nfailed += 1
                 else:
                     info["bad"] = False
-                    extraInfo = json.loads(str(out))
-                    if len(extraInfo.keys()) == 0:
-                        nfailed += 1
-                        info["bad"] = True
-                    for key,val in extraInfo.iteritems():
-                        info[key] = val
-
+                    if not self.justOpen:
+                        extraInfo = json.loads(str(out))
+                        if len(extraInfo.keys()) == 0:
+                            nfailed += 1
+                            info["bad"] = True
+                        for key,val in extraInfo.iteritems():
+                            info[key] = val
+                            
         self.parallel_.stop()
 
         print "Writing catalog"
@@ -428,6 +431,9 @@ class SamplesManager(object):
                 else:
                     return outcome
             return None
+        if self.just_open_:
+            ret,out = self.parallel_.run("fggOpenFile.py",[fName,tmp,dsetName,str(ifile),"2>/dev/null"],interactive=True)[2]
+            return self.readJobOutput(tmp,ret,out,dsetName,fileName,ifile)
         if self.queue_:
             self.parallel_.run("fggCheckFile.py",[fName,tmp,dsetName,str(ifile),"2>/dev/null"],interactive=False)
         else:
@@ -585,6 +591,7 @@ class SamplesManagerCli(SamplesManager):
                      "list                          lists datasets in catalog", 
                      "review                        review catalog to remove datasets", 
                      "check      [wildcard]         check duplicate files and errors in datasets and mark bad files",
+                     "checkopen  [wildcard]         as above but just try open file",
                      "checklite  [wildcard]         check for duplicate files in datasets"
                      ]
         
@@ -690,10 +697,17 @@ Commands:
 
     def run_checklite(self,*args):
         self.mn.checkAllDatasets(*args,light=True)
+
+    def run_checkopen(self,*args):
+        self.mn.checkAllDatasets(*args,justOpen=True)
     
-    def run_list(self):
+    def run_list(self,format=None):
         datasets,catalog = self.mn.getAllDatasets()
         ## datasets = [ d.rsplit("/",1)[0] for d in datasets ]
+        if format=="raw":
+            for d in datasets:
+                print d
+            return
         maxSec = 50
         halfSec = maxSec / 2
         firstHalf = halfSec - 1
