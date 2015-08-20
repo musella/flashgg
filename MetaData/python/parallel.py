@@ -60,6 +60,11 @@ class LsfJob:
         script += "eval `scram runtime -sh`"+"\n"
         script += "cd " + os.getcwd()+"\n"
         
+        if os.environ.get('X509_USER_PROXY',None):
+            script += "exporrt $X509_USER_PROXY=%s\n" % os.environ['X509_USER_PROXY']
+            
+        script += "env\n"
+
         # the user command
         script += cmd+"\n"
         
