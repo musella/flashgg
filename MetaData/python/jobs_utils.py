@@ -106,6 +106,9 @@ class JobsManager(object):
                 make_option("-b","--batch-system",dest="batchSystem",type="string",
                             default="auto",help="Batch system name. Currently supported: sge lsf, default: %default"
                             ),
+                make_option("--no-copy-proxy",dest="copy_proxy",action="store_false",
+                            default=True,help="Do not try to copy the grid proxy to the worker nodes."
+                            ),
                 ]
                               )
         
@@ -135,7 +138,7 @@ class JobsManager(object):
             self.options.cont = True
             
         self.jobFactory = TarballJobFactory(self.options.stageTo,self.options.stageCmd,job_outdir=self.options.outputDir,
-                                            batchSystem=self.options.batchSystem)
+                                            batchSystem=self.options.batchSystem,copy_proxy=self.options.copy_proxy)
         self.parallel = Parallel(self.options.ncpu,lsfQueue=self.options.queue,lsfJobName="%s/runJobs" % self.options.outputDir,
                                  asyncLsf=self.options.asyncLsf,jobDriver=self.jobFactory,batchSystem=self.options.batchSystem)
         
