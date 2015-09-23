@@ -47,7 +47,7 @@ def main(args):
         totEvents = events.GetEntriesFast()
         totWeights = totEvents
 
-    output = { "events"    : int(events.GetEntriesFast()),
+    output = { "nevents"    : int(events.GetEntriesFast()),
                "totEvents" : int(totEvents),
                "weights" : totWeights,
                }
