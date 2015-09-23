@@ -493,23 +493,43 @@ class SamplesManager(object):
         
         catalog = self.readCatalog(True)
         datasets = []
+        output = filter(lambda x: "output=" in x, args)
+        args = filter(lambda x: not "output=" in x, args)
         for dataset in catalog.keys():
             for arg in args:
                 if dataset == arg or fnmatch(dataset,arg):
                     datasets.append(dataset)
                     break
+        if len(output) > 1:
+            print "ERROR: you specified the output json more than once:\n"
+            print "      %s" % " ".join(output)
+            sys.exit(-1)
         
+
+        if len(output) > 0:
+            output = output[0].strip("output=")
+        else:
+            output = None
+            
         from FWCore.PythonUtilities.LumiList import LumiList
+        fulist = LumiList()
         for dataset in datasets:
             dlist = LumiList()
             jsonout = dataset.lstrip("/").rstrip("/").replace("/","_")+".json"
             for fil in catalog[dataset]["files"]:
                 flist = LumiList( runsAndLumis=fil.get("lumis",{}) )
-                print flist
+                ## print flist
                 dlist += flist
-            
-            with open(jsonout,"w+") as fout:
-                fout.write(json.dumps(dlist.compactList,sort_keys=True))
+            if not output:
+                with open(jsonout,"w+") as fout:
+                    fout.write(json.dumps(dlist.compactList,sort_keys=True))
+                    fout.close()
+            else:
+                fulist += dlist
+                
+        if output:
+            with open(output,"w+") as fout:
+                fout.write(json.dumps(fulist.compactList,sort_keys=True))
                 fout.close()
         
     def lockCatalog(self):
