@@ -22,8 +22,16 @@ namespace flashgg {
             triggerTag_ = trg.getParameter<InputTag>( "tag" );
             auto bitNames   = trg.getParameter<std::vector<std::string> >( "bits" );
             for( auto &bit : bitNames ) {
-                //                std::cout << bit << std::endl;
                 bits_.push_back( std::make_pair( bit, false ) );
+            }
+        }
+
+        if( cfg.exists( "extraFloats" ) ){
+            const auto extraFloats = cfg.getParameter<ParameterSet>( "extraFloats" );
+            extraFloatNames_ = extraFloats.getParameterNamesForType<InputTag>();
+            extraFloatVariables_.resize(extraFloatNames_.size(),0.);
+            for( auto & name : extraFloatNames_ ) {
+                extraFloatTags_.push_back( extraFloats.getParameter<InputTag>(name) );
             }
         }
     }
@@ -36,7 +44,7 @@ namespace flashgg {
     {
         tree->Branch( "rho", &cache_.rho );
         tree->Branch( "nvtx", &cache_.nvtx );
-        tree->Branch( "event", &cache_.event, "event/i" );
+        tree->Branch( "event", &cache_.event, "event/I" );
         tree->Branch( "lumi", &cache_.lumi, "lumi/b" );
         tree->Branch( "run", &cache_.run, "run/i" );
         tree->Branch( "nvtx", &cache_.nvtx );
@@ -46,6 +54,9 @@ namespace flashgg {
         }
         for( auto &bit : bits_ ) {
             tree->Branch( bit.first.c_str(), &bit.second, ( bit.first + "/O" ).c_str() );
+        }
+        for( size_t iextra = 0; iextra<extraFloatNames_.size(); ++iextra ) {
+            tree->Branch( extraFloatNames_[iextra].c_str(), &extraFloatVariables_[iextra] );
         }
     }
 
@@ -67,6 +78,19 @@ namespace flashgg {
                         break;
                     }
                 }
+            }
+        }
+        for( size_t iextra = 0; iextra<extraFloatTags_.size(); ++iextra ) {
+            try {
+                Handle<float> ihandle; 
+                evt.getByLabel( extraFloatTags_[iextra], ihandle );
+                extraFloatVariables_[iextra] = *ihandle;
+            } catch (...) {
+                Handle<std::vector<float> > ihandle; 
+                evt.getByLabel( extraFloatTags_[iextra], ihandle );
+                assert( ihandle->size() == 1 );
+                extraFloatVariables_[iextra] = (*ihandle)[0];
+
             }
         }
     }

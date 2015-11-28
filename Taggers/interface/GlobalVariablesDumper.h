@@ -25,6 +25,10 @@ namespace flashgg {
         edm::InputTag triggerTag_;
         std::vector<std::pair<std::string, bool>> bits_;
 
+        std::vector<edm::InputTag> extraFloatTags_;
+        std::vector<std::string> extraFloatNames_;
+        std::vector<float> extraFloatVariables_;
+        
     };
 
 }
