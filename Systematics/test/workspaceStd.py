@@ -3,8 +3,10 @@
 import FWCore.ParameterSet.Config as cms
 import FWCore.Utilities.FileUtils as FileUtils
 from flashgg.Systematics.SystematicDumperDefaultVariables import minimalVariables,minimalHistograms,minimalNonSignalVariables,systematicVariables
+import os
 
 # SYSTEMATICS SECTION
+dropVBFInNonGold = True
 
 process = cms.Process("FLASHggSyst")
 
@@ -14,12 +16,18 @@ process.load("Configuration.StandardSequences.GeometryDB_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_condDBv2_cff")
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag.globaltag = '74X_mcRun2_asymptotic_v4' # keep updated for JEC
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
-process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 1000 )
+if os.environ["CMSSW_VERSION"].count("CMSSW_7_6"):
+    process.GlobalTag.globaltag = '76X_mcRun2_asymptotic_v12'
+else:
+    process.GlobalTag.globaltag = '74X_mcRun2_asymptotic_v4' 
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(300) )
+process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32( 100 )
 
 from flashgg.Systematics.SystematicsCustomize import *
 jetSystematicsInputTags = createStandardSystematicsProducers(process)
+if dropVBFInNonGold:
+    process.flashggVBFTag.SetArbitraryNonGoldMC = True
+    process.flashggVBFTag.DropNonGoldData = True
 modifyTagSequenceForSystematics(process,jetSystematicsInputTags)
 
 systlabels = [""]
@@ -34,18 +42,28 @@ customize.parse()
 print "customize.processId:",customize.processId
 # load appropriate scale and smearing bins here
 # systematics customization scripts will take care of adjusting flashggDiPhotonSystematics
-process.load("flashgg.Systematics.escales.76X_16DecRereco_2015")
+#process.load("flashgg.Systematics.escales.escale76X_16DecRereco_2015")
+
+# Or use the official tool instead
+useEGMTools(process)
+
 # Only run systematics for signal events
 if customize.processId.count("h_") or customize.processId.count("vbf_"): # convention: ggh vbf wzh (wh zh) tth
     print "Signal MC, so adding systematics and dZ"
     variablesToUse = minimalVariables
     for direction in ["Up","Down"]:
         phosystlabels.append("MvaShift%s01sigma" % direction)
+#        phosystlabels.append("MvaLinearSyst%s01sigma" % direction)
         phosystlabels.append("SigmaEOverEShift%s01sigma" % direction)
+        phosystlabels.append("MaterialCentral%s01sigma" % direction)
+        phosystlabels.append("MaterialForward%s01sigma" % direction)
         jetsystlabels.append("JEC%s01sigma" % direction)
         jetsystlabels.append("JER%s01sigma" % direction)
+        jetsystlabels.append("RMSShift%s01sigma" % direction)
+        variablesToUse.append("MvaLinearSyst%s01sigma[1,-999999.,999999.] := weight(\"MvaLinearSyst%s01sigma\")" % (direction,direction))
         variablesToUse.append("LooseMvaSF%s01sigma[1,-999999.,999999.] := weight(\"LooseMvaSF%s01sigma\")" % (direction,direction))
         variablesToUse.append("PreselSF%s01sigma[1,-999999.,999999.] := weight(\"PreselSF%s01sigma\")" % (direction,direction))
+        variablesToUse.append("electronVetoSF%s01sigma[1,-999999.,999999.] := weight(\"electronVetoSF%s01sigma\")" % (direction,direction))
         variablesToUse.append("TriggerWeight%s01sigma[1,-999999.,999999.] := weight(\"TriggerWeight%s01sigma\")" % (direction,direction))
         variablesToUse.append("FracRVWeight%s01sigma[1,-999999.,999999.] := weight(\"FracRVWeight%s01sigma\")" % (direction,direction))
         variablesToUse.append("ElectronWeight%s01sigma[1,-999999.,999999.] := weight(\"ElectronWeight%s01sigma\")" % (direction,direction))
@@ -53,8 +71,10 @@ if customize.processId.count("h_") or customize.processId.count("vbf_"): # conve
         variablesToUse.append("JetBTagWeight%s01sigma[1,-999999.,999999.] := weight(\"JetBTagWeight%s01sigma\")" % (direction,direction))
         for r9 in ["HighR9","LowR9"]:
             for region in ["EB","EE"]:
-                phosystlabels.append("MCSmear%s%s%s01sigma" % (r9,region,direction))
+#                phosystlabels.append("MCSmear%s%s%s01sigma" % (r9,region,direction))
                 phosystlabels.append("MCScale%s%s%s01sigma" % (r9,region,direction))
+                for var in ["Rho","Phi"]:
+                    phosystlabels.append("MCSmear%s%s%s%s01sigma" % (r9,region,var,direction))
     systlabels += phosystlabels
     systlabels += jetsystlabels
     customizeSystematicsForSignal(process)
@@ -85,12 +105,15 @@ process.source = cms.Source ("PoolSource",
                              fileNames = cms.untracked.vstring(
         #                             "file:myMicroAODOutputFile.root"
         #        "root://eoscms.cern.ch//eos/cms/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIISpring15-ReMiniAOD-1_1_0-25ns/1_1_0/VBFHToGG_M-125_13TeV_powheg_pythia8/RunIISpring15-ReMiniAOD-1_1_0-25ns-1_1_0-v0-RunIISpring15MiniAODv2-74X_mcRun2_asymptotic_v2-v1/160105_224017/0000/myMicroAODOutputFile_1.root"
-#        "/store/group/phys_higgs/cmshgg/szenz/flashgg/RunIISpring15-ReReco74X-Rerun-1_1_0-25ns/1_2_0/DoubleEG/RunIISpring15-ReReco74X-Rerun-1_1_0-25ns-1_2_0-v0-Run2015D-04Dec2015-v2/160117_214114/0000/myMicroAODOutputFile_10.root"
+#        "root://eoscms.cern.ch//eos/cms//store/group/phys_higgs/cmshgg/szenz/flashgg/RunIISpring15-ReReco74X-Rerun-1_1_0-25ns/1_2_0/DoubleEG/RunIISpring15-ReReco74X-Rerun-1_1_0-25ns-1_2_0-v0-Run2015D-04Dec2015-v2/160117_214114/0000/myMicroAODOutputFile_10.root"
 #        "root://eoscms.cern.ch//eos/cms/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIISpring15-ReMiniAOD-1_1_0-25ns/1_1_0/ttHJetToGG_M125_13TeV_amcatnloFXFX_madspin_pythia8/RunIISpring15-ReMiniAOD-1_1_0-25ns-1_1_0-v0-RunIISpring15MiniAODv2-74X_mcRun2_asymptotic_v2-v1/160105_224456/0000/myMicroAODOutputFile_2.root"
         #"root://eoscms.cern.ch//eos/cms//store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIISpring15-ReMiniAOD-1_1_0-25ns/1_1_0/VHToGG_M120_13TeV_amcatnloFXFX_madspin_pythia8/RunIISpring15-ReMiniAOD-1_1_0-25ns-1_1_0-v0-RunIISpring15MiniAODv2-74X_mcRun2_asymptotic_v2-v1/160105_224138/0000/myMicroAODOutputFile_1.root"
-#        "/store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIIFall15DR76-1_3_0-25ns/1_3_0/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/RunIIFall15DR76-1_3_0-25ns-1_3_0-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext1-v1/160126_090235/0000/myMicroAODOutputFile_16.root"
-                "/store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/ttHJetToGG_M120_13TeV_amcatnloFXFX_madspin_pythia8/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/160127_024939/0000/myMicroAODOutputFile_1.root"
-
+#        "root://eoscms.cern.ch//eos/cms//store/group/phys_higgs/cmshgg/sethzenz/flashgg/RunIIFall15DR76-1_3_0-25ns/1_3_0/DYJetsToLL_M-50_TuneCUETP8M1_13TeV-amcatnloFXFX-pythia8/RunIIFall15DR76-1_3_0-25ns-1_3_0-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12_ext1-v1/160126_090235/0000/myMicroAODOutputFile_16.root"
+#        "root://eoscms.cern.ch//eos/cms//store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/ttHJetToGG_M120_13TeV_amcatnloFXFX_madspin_pythia8/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/160127_024939/0000/myMicroAODOutputFile_1.root"
+#"root://eoscms.cern.ch//eos/cms/store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/DoubleEG/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-Run2015D-16Dec2015-v2/160127_022911/0000/myMicroAODOutputFile_100.root"
+"root://eoscms.cern.ch//eos/cms//store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/VBFHToGG_M-120_13TeV_powheg_pythia8/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/160210_045711/0000/myMicroAODOutputFile_1.root"
+#"root://eoscms.cern.ch//eos/cms/store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/QCD_Pt-30to40_DoubleEMEnriched_MGG-80toInf_TuneCUETP8M1_13TeV_Pythia8/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/160127_023721/0000/myMicroAODOutputFile_1.root"
+#"root://eoscms.cern.ch//eos/cms/store/group/phys_higgs/cmshgg/ferriff/flashgg/RunIIFall15DR76-1_3_0-25ns_ext1/1_3_1/GJet_Pt-40toInf_DoubleEMEnriched_MGG-80toInf_TuneCUETP8M1_13TeV_Pythia8/RunIIFall15DR76-1_3_0-25ns_ext1-1_3_1-v0-RunIIFall15MiniAODv2-PU25nsData2015v1_76X_mcRun2_asymptotic_v12-v1/160210_050208/0000/myMicroAODOutputFile_1.root"
 ))
 
 process.TFileService = cms.Service("TFileService",
@@ -170,7 +193,11 @@ for tag in tagList:
 
 # Require standard diphoton trigger
 from HLTrigger.HLTfilters.hltHighLevel_cfi import hltHighLevel
-process.hltHighLevel= hltHighLevel.clone(HLTPaths = cms.vstring("HLT_Diphoton30_18_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95_v1") )
+process.hltHighLevel= hltHighLevel.clone(HLTPaths = cms.vstring("HLT_Diphoton30_18_R9Id_OR_IsoCaloId_AND_HE_R9Id_Mass95_v1",
+                                                                "HLT_Diphoton30PV_18PV_R9Id_AND_IsoCaloId_AND_HE_R9Id_DoublePixelVeto_Mass55_v1",
+                                                                "HLT_Diphoton30EB_18EB_R9Id_OR_IsoCaloId_AND_HE_R9Id_DoublePixelVeto_Mass55_v1"
+                                                                ))
+
 process.options = cms.untracked.PSet( wantSummary = cms.untracked.bool(True) )
 
 # ee bad supercluster filter on data
@@ -189,13 +216,29 @@ if (customize.processId.count("wh") or customize.processId.count("zh")) and not 
     process.VHFilter.chooseW = bool(customize.processId.count("wh"))
     process.VHFilter.chooseZ = bool(customize.processId.count("zh"))
 
+# Split out prompt-fake or fake-fake
+process.finalFilter = cms.Sequence()
+if (customize.processId.count("qcd") or customize.processId.count("gjet")) and customize.processId.count("fake"):
+    process.load("flashgg/Systematics/PromptFakeFilter_cfi")
+    process.finalFilter += process.PromptFakeFilter
+    if (customize.processId.count("promptfake")):
+        process.PromptFakeFilter.doPromptFake = cms.bool(True)
+        process.PromptFakeFilter.doFakeFake =cms.bool(False)
+    elif (customize.processId.count("fakefake")):
+        process.PromptFakeFilter.doPromptFake =cms.bool(False)
+        process.PromptFakeFilter.doFakeFake =cms.bool(True)
+    else:
+        raise Exception,"Mis-configuration of python for prompt-fake filter"
+
 process.p = cms.Path(process.dataRequirements*
                      process.genFilter*
+                     process.flashggUpdatedIdMVADiPhotons*
                      process.flashggDiPhotonSystematics*
                      process.flashggMuonSystematics*process.flashggElectronSystematics*
                      (process.flashggUnpackedJets*process.jetSystematicsSequence)*
                      (process.flashggTagSequence*process.systematicsTagSequences)*
                      process.flashggSystTagMerger*
+                     process.finalFilter*
                      process.tagsDumper)
 
 print "--- Dumping modules that take diphotons as input: ---"
@@ -209,14 +252,21 @@ for mn in mns:
 print
 printSystematicInfo(process)
 
+#from Validation.Performance.TimeMemoryInfo import customise as TimeMemoryCustomize
+#TimeMemoryCustomize(process)
+#process.MessageLogger.cerr.threshold = 'WARNING'
 
+#process.load("IgTools.IgProf.IgProfTrigger")
+#process.igprof.reportEventInterval     = cms.untracked.int32(250)
+#process.igprof.reportToFileAtBeginJob  = cms.untracked.string("|gzip -c>igprof.begin-job.gz")
+#process.igprof.reportToFileAtEvent     = cms.untracked.string("|gzip -c>igprof.%I.%E.%L.%R.event.gz")
+#process.p += process.igprof
 
 ################################
 ## Dump merged tags to screen ##
 ################################
 
 #process.load("flashgg/Taggers/flashggTagTester_cfi")
-#process.flashggTagTester.TagSorter = cms.InputTag("flashggTagSystematics")
 #process.flashggTagTester.TagSorter = cms.InputTag("flashggSystTagMerger")
 #process.flashggTagTester.ExpectMultiples = cms.untracked.bool(True)
 #process.p += process.flashggTagTester
@@ -238,7 +288,7 @@ printSystematicInfo(process)
 #print >> processDumpFile, process.dumpPython()
 
 # set default options if needed
-customize.setDefault("maxEvents",100)
+customize.setDefault("maxEvents",300)
 customize.setDefault("targetLumi",2.61e+3)
 # call the customization
 customize(process)

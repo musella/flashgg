@@ -86,7 +86,11 @@ namespace flashgg {
 
             sigmas_.push_back( nsigmas );
             //            std::cout << " About to create a 1D factory with methodName = " << methodName << std::endl;
-            Corrections_.at( ipset ).reset( FlashggSystematicMethodsFactory<flashgg_object, param_var>::get()->create( methodName, pset, &globalVars_ ) );
+            if( pset.exists( "PhotonMethodName" ) ) {
+                string photonMethodName = pset.getParameter<string>( "PhotonMethodName" );
+                //                std::cout << "    PhotonMethodName = " << photonMethodName << std::endl;
+            }
+            Corrections_.at( ipset ).reset( FlashggSystematicMethodsFactory<flashgg_object, param_var>::get()->create( methodName, pset, consumesCollector(), &globalVars_  ) );
             if( !Corrections_.at( ipset )->makesWeight() ) {
                 for( const auto &sig : sigmas_.at( ipset ) ) {
                     std::string collection_label = Corrections_.at( ipset )->shiftLabel( sig );
@@ -118,7 +122,11 @@ namespace flashgg {
 
             sigmas2D_.push_back( nsigmas );
             //            std::cout << " About to create a 2D factory with methodName = " << methodName << std::endl;
-            Corrections2D_.at( ipset2D ).reset( FlashggSystematicMethodsFactory<flashgg_object, pair<param_var, param_var> >::get()->create( methodName, pset, &globalVars_ ) );
+            if( pset.exists( "PhotonMethodName" ) ) {
+                string photonMethodName = pset.getParameter<string>( "PhotonMethodName" );
+                //                std::cout << "    PhotonMethodName = " << photonMethodName << std::endl;
+            }
+            Corrections2D_.at( ipset2D ).reset( FlashggSystematicMethodsFactory<flashgg_object, pair<param_var, param_var> >::get()->create( methodName, pset, consumesCollector(), &globalVars_ ) );
             if( !Corrections_.at( ipset2D )->makesWeight() ) {
                 for( const auto &sig : sigmas2D_.at( ipset2D ) ) {
                     std::string collection_label = Corrections2D_.at( ipset2D )->shiftLabel( sig );
@@ -229,37 +237,21 @@ namespace flashgg {
     }
 
     template <typename flashgg_object, typename param_var, template <typename...> class output_container>
-    void ObjectSystematicProducer<flashgg_object, param_var, output_container>::produce( Event &evt, const EventSetup & )
+    void ObjectSystematicProducer<flashgg_object, param_var, output_container>::produce( Event &evt, const EventSetup & setup )
     {
 
         Handle<View<flashgg_object> > objects;
         evt.getByToken( ObjectToken_, objects );
+
+        for( unsigned int ncorr = 0 ; ncorr < Corrections_.size() ; ncorr++ ) {
+            Corrections_.at( ncorr )->eventInitialize( evt, setup );
+        }
+        for( unsigned int ncorr = 0 ; ncorr < Corrections2D_.size() ; ncorr++ ) {
+            Corrections2D_.at( ncorr )->eventInitialize(evt, setup );
+        }
+
         globalVars_.update(evt);
         
-        //        std::cout << " start of produce" << std::endl;
-
-        // Give each corrector a pointer to the random service engine that it can use if needs it
-        //        edm::Service<edm::RandomNumberGenerator> rng;
-
-        //        std::cout << " rng.isAvailable()=" << rng.isAvailable() << std::endl;
-
-        //        CLHEP::HepRandomEngine &engine = rng->getEngine( evt.streamID() );
-
-        //        std::cout << " Got engine!" << std::endl;
-
-        //        for( unsigned int ncorr = 0 ; ncorr < Corrections_.size() ; ncorr++ ) {
-            //            std::cout << " Setting engine 1D " << ncorr << std::endl;
-        //            Corrections_.at( ncorr )->setRandomEngine( engine );
-            //            std::cout << " Set engine 1D " << ncorr << " label=" << Corrections_.at( ncorr )->shiftLabel( param_var( 0 ) ) << std::endl;
-        //        }
-        //        for( unsigned int ncorr = 0 ; ncorr < Corrections2D_.size() ; ncorr++ ) {
-            //            std::cout << " Setting engine 2D " << ncorr << std::endl;
-        //            Corrections2D_.at( ncorr )->setRandomEngine( engine );
-            //            std::cout << " Setting engine 2D " << ncorr << " label=" << Corrections2D_.at( ncorr )->shiftLabel( PAIR_ZERO ) << std::endl;
-        //        }
-
-        //        std::cout << "Engines set!" << std::endl;
-
         // Build central collection
         std::vector<float> centralWeights;
         auto_ptr<output_container<flashgg_object> > centralObjectColl( new output_container<flashgg_object> );

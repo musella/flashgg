@@ -15,7 +15,7 @@ namespace flashgg {
     public:
         typedef StringCutObjectSelector<Photon, true> selector_type;
 
-        PhotonSmearConstant( const edm::ParameterSet &conf, const GlobalVariablesComputer *gv );
+        PhotonSmearConstant( const edm::ParameterSet &conf, edm::ConsumesCollector && iC, const GlobalVariablesComputer *gv );
         void applyCorrection( flashgg::Photon &y, int syst_shift ) override;
         std::string shiftLabel( int ) const override;
 
@@ -25,8 +25,8 @@ namespace flashgg {
         bool exaggerateShiftUp_; // for sanity checks only
     };
 
-    PhotonSmearConstant::PhotonSmearConstant( const edm::ParameterSet &conf, const GlobalVariablesComputer *gv ) :
-        ObjectSystMethodBinnedByFunctor( conf, gv ),
+    PhotonSmearConstant::PhotonSmearConstant( const edm::ParameterSet &conf, edm::ConsumesCollector && iC, const GlobalVariablesComputer *gv ) :
+        ObjectSystMethodBinnedByFunctor( conf, std::forward<edm::ConsumesCollector>(iC), gv ),
         overall_range_( conf.getParameter<std::string>( "OverallRange" ) ),
         random_label_(conf.getParameter<std::string>("RandomLabel")),
         exaggerateShiftUp_( conf.getParameter<bool>( "ExaggerateShiftUp" ) )
@@ -82,4 +82,5 @@ DEFINE_EDM_PLUGIN( FlashggSystematicPhotonMethodsFactory,
 // c-basic-offset:4
 // End:
 // vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
+
 

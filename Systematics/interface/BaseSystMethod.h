@@ -7,8 +7,10 @@
 #include "FWCore/Utilities/interface/RandomNumberGenerator.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "flashgg/DataFormats/interface/WeightedObject.h"
-#include "CondFormats/JetMETObjects/interface/JetCorrectorParameters.h"
-#include "JetMETCorrections/Objects/interface/JetCorrector.h"
+
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
 
 namespace flashgg {
 
@@ -18,7 +20,7 @@ namespace flashgg {
 
     public:
 
-        BaseSystMethod( const edm::ParameterSet &conf ):
+        BaseSystMethod( const edm::ParameterSet &conf, edm::ConsumesCollector && iC ):
             _Name( conf.getParameter<std::string>( "MethodName" ) ),
             _Label( conf.getParameter<std::string>( "Label" ) ),
             _MakesWeight( false ),
@@ -47,13 +49,9 @@ namespace flashgg {
         bool applyCentralValue() const { return _ApplyCentralValue; }
 
         virtual std::string shiftLabel( param_var syst_val ) const = 0;
-        virtual void setJECUncertainty ( const JetCorrectorParameters & ) {
-            throw cms::Exception( "NotImplemented" ) << " should be used for JEC only";
-        } 
-        virtual void setJEC( const JetCorrector*, const edm::Event &, const edm::EventSetup &  ) {
-            throw cms::Exception( "NotImplemented" ) << " should be used for JEC only";
-        }
 
+        virtual void eventInitialize( const edm::Event &, const edm::EventSetup & ) {
+        }
 
         virtual void setRandomEngine( CLHEP::HepRandomEngine &eng )
         {
@@ -95,8 +93,9 @@ namespace flashgg {
 //}
 
 //typedef template< class T, class U> edmplugin::PluginFactory< flashgg::BaseSystMethod<T,U>* (const edm::ParameterSet & ) > FlashggSystematicMethodsFactory;
-template< class T, class U > using FlashggSystematicMethodsFactory = edmplugin::PluginFactory< flashgg::BaseSystMethod<T, U>* ( const edm::ParameterSet &, const flashgg::GlobalVariablesComputer* ) >;
+template< class T, class U > using FlashggSystematicMethodsFactory = edmplugin::PluginFactory< flashgg::BaseSystMethod<T, U>* ( const edm::ParameterSet &, edm::ConsumesCollector &&, const flashgg::GlobalVariablesComputer* ) >;
 typedef FlashggSystematicMethodsFactory<flashgg::Photon, int> FlashggSystematicPhotonMethodsFactory;
+typedef FlashggSystematicMethodsFactory<flashgg::SinglePhotonView, int> FlashggSystematicSinglePhotonViewMethodsFactory;
 typedef FlashggSystematicMethodsFactory<flashgg::DiPhotonCandidate, int> FlashggSystematicDiPhotonMethodsFactory;
 typedef FlashggSystematicMethodsFactory<flashgg::Photon, std::pair<int, int> > FlashggSystematicPhotonMethodsFactory2D;
 typedef FlashggSystematicMethodsFactory<flashgg::DiPhotonCandidate, std::pair<int, int> > FlashggSystematicDiPhotonMethodsFactory2D;

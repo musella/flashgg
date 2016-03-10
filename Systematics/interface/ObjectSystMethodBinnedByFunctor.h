@@ -57,9 +57,8 @@ namespace flashgg {
             Bin( std::vector<double> mi, std::vector<double> ma, std::vector<double> va, std::vector<double> er ) :
                 min( mi ), max( ma ), val( va ), unc( er ) {}
         };
-        
-        ObjectSystMethodBinnedByFunctor( const edm::ParameterSet &conf, const GlobalVariablesComputer * globalVariables) :
-            BaseSystMethod<flashgg_object, param_var>::BaseSystMethod( conf ),
+        ObjectSystMethodBinnedByFunctor( const edm::ParameterSet &conf, edm::ConsumesCollector && iC, const GlobalVariablesComputer * globalVariables ) :
+            BaseSystMethod<flashgg_object, param_var>::BaseSystMethod( conf, std::forward<edm::ConsumesCollector>(iC) ),
             debug_( conf.getUntrackedParameter<bool>( "Debug", false ) )
         {
             const auto &pset = conf.getParameterSet( "BinList" );
@@ -159,7 +158,7 @@ namespace flashgg {
             }
             std::stringstream str;
             std::copy(func_vals.begin(),func_vals.end(),std::ostream_iterator<double>(str,","));
-            throw cms::Exception( "Binning" ) << " binContents failed and would return a pair of empty vectors " << str.str();
+            throw cms::Exception( "Binning" ) << " binContents failed for method " << this->name() << ", label " << this->label() << ", shiftLabel " << this->shiftLabel(param_var()) << ", would return a pair of empty vectors " << str.str();
             return std::make_pair( std::vector<double>(), std::vector<double>() ); // this is bad
         }
 

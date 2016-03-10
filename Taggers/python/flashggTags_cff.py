@@ -19,7 +19,8 @@ flashggUntagged = cms.EDProducer("FlashggUntaggedTagProducer",
                                  SystLabel      = cms.string(""),
                                  MVAResultTag   = cms.InputTag('flashggDiPhotonMVA'),
                                  GenParticleTag = cms.InputTag( "flashggPrunedGenParticles" ),
-                                 Boundaries     = cms.vdouble(-0.338,0.273,0.617,0.870) #,1.000)
+                                 Boundaries     = cms.vdouble(-0.337,0.258,0.584,0.913), #,1.000),
+                                 RequireScaledPtCuts = cms.bool(True)
 )
 
 flashggTTHHadronicTag = cms.EDProducer("FlashggTTHHadronicTagProducer",
@@ -36,7 +37,7 @@ flashggTTHHadronicTag = cms.EDProducer("FlashggTTHHadronicTagProducer",
                                        subleadPhoOverMassThreshold = cms.double(0.25),
                                        subleadPhoPtThreshold = cms.double(20),
                                        subleadPhoUseVariableThreshold =  cms.bool(True),
-                                       MVAThreshold = cms.double(-0.1),
+                                       MVAThreshold = cms.double(0.0),
                                        PhoMVAThreshold = cms.double(-0.9),
                                        inputTagJets= UnpackedJetCollectionVInputTag, 
                                        jetPtThreshold = cms.double(25.),
@@ -72,7 +73,11 @@ flashggVBFTag = cms.EDProducer("FlashggVBFTagProducer",
                                GenJetTag = cms.InputTag("slimmedGenJets"),
                                #Boundaries=cms.vdouble(0.21,0.6,0.81)
                                #  for the moment we have two categories VBF-0 and VBF-1: to be changed when the diphoton MVA is ready 
-                               Boundaries=cms.vdouble(0.5819, 0.9449) 
+                               #Boundaries=cms.vdouble(0.5819, 0.9449)
+                               Boundaries=cms.vdouble(0.62, 0.94),
+                               SetArbitraryNonGoldMC = cms.bool(False),
+                               DropNonGoldData = cms.bool(False),
+                               RequireVBFPreselection = cms.bool(True)
                                )
 
 

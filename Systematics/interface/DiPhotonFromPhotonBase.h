@@ -16,11 +16,12 @@ namespace flashgg {
     {
 
     public:
-        DiPhotonFromPhotonBase( const edm::ParameterSet &conf, const GlobalVariablesComputer * gv );
+        DiPhotonFromPhotonBase( const edm::ParameterSet &conf, edm::ConsumesCollector && iC, const GlobalVariablesComputer * gv );
 
         void applyCorrection( DiPhotonCandidate &y, param_var syst_shift ) override;
         float makeWeight( const DiPhotonCandidate &y, param_var syst_shift ) override;
         std::string shiftLabel( param_var ) const override;
+        void eventInitialize( const edm::Event &iEvent, const edm::EventSetup & iSetup ) override;
 
         void setRandomEngine( CLHEP::HepRandomEngine &eng ) override
         {
@@ -38,12 +39,12 @@ namespace flashgg {
     };
 
     template<class param_var>
-    DiPhotonFromPhotonBase<param_var>::DiPhotonFromPhotonBase( const edm::ParameterSet &conf, const GlobalVariablesComputer * gv ) :
-        BaseSystMethod<DiPhotonCandidate, param_var>::BaseSystMethod( conf ),
+    DiPhotonFromPhotonBase<param_var>::DiPhotonFromPhotonBase( const edm::ParameterSet &conf, edm::ConsumesCollector && iC, const GlobalVariablesComputer * gv ) :
+        BaseSystMethod<DiPhotonCandidate, param_var>::BaseSystMethod( conf, std::forward<edm::ConsumesCollector>(iC) ),
         debug_( conf.getUntrackedParameter<bool>( "Debug", false ) )
     {
         std::string photonMethodName = conf.getParameter<std::string>( "PhotonMethodName" );
-        photon_corr_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf, gv ) );
+        photon_corr_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf, std::forward<edm::ConsumesCollector>(iC), gv ) );
         if(conf.exists("BinList2"))  //if defined, BinList2 gives bins for sublead, lead uses BinList
             {
                 edm::ParameterSet conf2;// =  conf.clone();
@@ -59,11 +60,12 @@ namespace flashgg {
                 conf2.addParameter<edm::ParameterSet>("BinList", pset);
                 std::string binListName = "BinList";
                 conf2.insertParameterSet(true,binListName, *(conf.retrieveUnknownParameterSet("BinList2")));
-                photon_corr2_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf2, gv ) );
-            
+                photon_corr2_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf2, std::forward<edm::ConsumesCollector>(iC),  gv ) );
+                
             }
-        else //if BinList2 is not defined, use BinList for both lead and sublead photons
-            photon_corr2_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf, gv ) );
+        else { //if BinList2 is not defined, use BinList for both lead and sublead photons
+            photon_corr2_.reset( FlashggSystematicMethodsFactory<flashgg::Photon, param_var>::get()->create( photonMethodName, conf, std::forward<edm::ConsumesCollector>(iC),  gv ) );
+        }
         this->setMakesWeight( photon_corr_->makesWeight() );
     }
 
@@ -101,13 +103,23 @@ namespace flashgg {
         }
         y.makePhotonsPersistent();
         photon_corr_->applyCorrection( y.getLeadingPhoton(), syst_shift );
-        photon_corr_->applyCorrection( y.getSubLeadingPhoton(), syst_shift );
+        photon_corr2_->applyCorrection( y.getSubLeadingPhoton(), syst_shift );
         y.computeP4AndOrder();
         if( debug_ ) {
             std::cout << "END OF DiPhotonFromPhoton::applyCorrection M PT E1 E2 ETA1 ETA2 "
                       << y.mass() << " " << y.pt() << " " << y.leadingPhoton()->energy() << " " << y.subLeadingPhoton()->energy() << " "
                       << y.leadingPhoton()->eta() << " " << y.subLeadingPhoton()->eta() << std::endl;
         }
+    }
+
+    template<class param_var>
+    void DiPhotonFromPhotonBase<param_var>::eventInitialize( const edm::Event &ev, const edm::EventSetup & es )
+    {
+        if( debug_ ) {
+            std::cout << "calling event initialize for both photons " << std::endl;
+        }
+        photon_corr_->eventInitialize( ev, es );
+        photon_corr2_->eventInitialize( ev, es );
     }
 }
 

@@ -43,6 +43,10 @@ namespace flashgg {
         EDGetTokenT<View<reco::GenJet> >           genJetToken_;
         string systLabel_;
 
+        bool dropNonGoldData_;
+        bool setArbitraryNonGoldMC_;
+        bool requireVBFPreselection_;
+
         vector<double> boundaries;
 
     };
@@ -53,7 +57,10 @@ namespace flashgg {
         mvaResultToken_( consumes<View<flashgg::DiPhotonMVAResult> >( iConfig.getParameter<InputTag> ( "MVAResultTag" ) ) ),
         genPartToken_( consumes<View<reco::GenParticle> >( iConfig.getParameter<InputTag> ( "GenParticleTag" ) ) ),
         genJetToken_ ( consumes<View<reco::GenJet> >( iConfig.getParameter<InputTag> ( "GenJetTag" ) ) ),
-        systLabel_   ( iConfig.getParameter<string> ( "SystLabel" ) )
+        systLabel_   ( iConfig.getParameter<string> ( "SystLabel" ) ),
+        dropNonGoldData_   ( iConfig.getParameter<bool> ( "DropNonGoldData" ) ),
+        setArbitraryNonGoldMC_   ( iConfig.getParameter<bool> ( "SetArbitraryNonGoldMC" ) ),
+        requireVBFPreselection_   ( iConfig.getParameter<bool> ( "RequireVBFPreselection" ) )
     {
         boundaries = iConfig.getParameter<vector<double > >( "Boundaries" );
         assert( is_sorted( boundaries.begin(), boundaries.end() ) ); // we are counting on ascending order - update this to give an error message or exception
@@ -145,7 +152,28 @@ namespace flashgg {
             tag_obj.setSystLabel    ( systLabel_ );
 
             tag_obj.includeWeights( *dipho );
-            
+
+            if ( evt.isRealData() ) {
+                tag_obj.setIsGold ( evt.run() );
+                //                std::cout << "  VBFTagProducer setting isGold using evt.run()=" << evt.run() << " isGold=" << tag_obj.isGold() << std::endl;
+            } else {
+                if ( setArbitraryNonGoldMC_ ) {
+                    if ( (evt.id().event() % 269) >= 231 ) { // gold 2.31, silver 2.69
+                        tag_obj.setIsGoldMC( false );
+                        //                        std::cout << "  VBFTagProducer setting isGold using evt.id().event()=" << evt.id().event() << " (evt.id().event() % 269)=" << (evt.id().event() % 269) << " isGold=" << tag_obj.isGold() << std::endl;
+                    } else {
+                        tag_obj.setIsGoldMC( true );
+                    }
+                } else { // Never arbitrarily set MC isGold to false
+                    tag_obj.setIsGoldMC( true );
+                }
+            }
+
+            if ( dropNonGoldData_ && !tag_obj.isGold() ) {
+                //                std::cout << "  VBFTagProducer has designated this event as not isGold so we drop the tag!" << std::endl;
+                continue;
+            }
+
             int catnum = chooseCategory( vbfdipho_mvares->vbfDiPhoDiJetMvaResult );
             tag_obj.setCategoryNumber( catnum );
             unsigned int index_gp_leadjet = std::numeric_limits<unsigned int>::max();
@@ -385,8 +413,27 @@ namespace flashgg {
                 truth_obj.setClosestParticleToSubLeadingPhoton(genParticles->ptrAt(gpIndex2));
             }            
 
+            bool VBFpresel = 1;
+            if ( requireVBFPreselection_ ) {
+                /*
+                std::cout << "  Requiring VBF Preselection... dijet_LeadJPt=" << tag_obj.VBFMVA().dijet_LeadJPt
+                          << " dijet_SubJPt=" << tag_obj.VBFMVA().dijet_SubJPt
+                          << " leadPho_PToM=" << tag_obj.VBFMVA().leadPho_PToM
+                          << " sublPho_PToM=" << tag_obj.VBFMVA().sublPho_PToM
+                          << " dijet_Mjj=" << tag_obj.VBFMVA().dijet_Mjj << std::endl;
+                */
+
+                VBFpresel = ( tag_obj.VBFMVA().dijet_LeadJPt > 30. 
+                                && tag_obj.VBFMVA().dijet_SubJPt > 20. 
+                                && tag_obj.VBFMVA().leadPho_PToM > (1./3) 
+                                && tag_obj.VBFMVA().sublPho_PToM > (1./4) 
+                                && tag_obj.VBFMVA().dijet_Mjj > 250. );
+
+                //                std::cout << "  VBFpresel=" << VBFpresel << std::endl;
+            }
+
             // saving the collection
-            if( tag_obj.categoryNumber() >= 0 ) {
+            if( VBFpresel && tag_obj.categoryNumber() >= 0 ) {
                 tags->push_back( tag_obj );
                 if( ! evt.isRealData() ) {
                     truths->push_back( truth_obj );
