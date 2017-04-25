@@ -118,8 +118,8 @@ class SamplesManager(object):
         for dataset in list_datasets:
             if "*" in dataset:
                 # response = das_query("https://cmsweb.cern.ch","dataset dataset=%s | grep dataset.name" % dataset, 0, 0, False, self.dbs_instance_, ckey=x509(), cert=x509())
-                # response = das_query("https://cmsweb.cern.ch","dataset dataset=%s instance=%s | grep dataset.name" % (dataset, self.dbs_instance_), 0, 0, False, ckey=x509(), cert=x509())
-                response = das_query("https://cmsweb.cern.ch","dataset dataset=%s instance=%s | grep dataset.name" % (dataset, self.dbs_instance_), 0, 0, False)
+                response = das_query("https://cmsweb.cern.ch","dataset dataset=%s instance=%s | grep dataset.name" % (dataset, self.dbs_instance_), 0, 0, False, ckey=x509(), cert=x509())
+                # response = das_query("https://cmsweb.cern.ch","dataset dataset=%s instance=%s | grep dataset.name" % (dataset, self.dbs_instance_), 0, 0, False)
                 ## print response
                 for d in response["data"]:
                     ## print d
@@ -144,8 +144,8 @@ class SamplesManager(object):
         Read dataset files from DAS.
         @dsetName: dataset name
         """
-        ## response = das_query("https://cmsweb.cern.ch","file dataset=%s | grep file.name,file.nevents" % dsetName, 0, 0, False, self.dbs_instance_, ckey=x509(), cert=x509())
-        response = das_query("https://cmsweb.cern.ch","file dataset=%s instance=%s | grep file.name,file.nevents" % (dsetName,self.dbs_instance_), 0, 0, False, )
+        response = das_query("https://cmsweb.cern.ch","file dataset=%s | grep file.name,file.nevents" % dsetName, 0, 0, False, self.dbs_instance_, ckey=x509(), cert=x509())
+        ## response = das_query("https://cmsweb.cern.ch","file dataset=%s instance=%s | grep file.name,file.nevents" % (dsetName,self.dbs_instance_), 0, 0, False, )
         
         files=[]
         for d in response["data"]:
@@ -536,7 +536,7 @@ class SamplesManager(object):
         from FWCore.PythonUtilities.LumiList import LumiList
 
         lumisToSkip = catalog[name].get('lumisToSkip',None)
-        if lumisToSkip:
+        if lumisToSkip and not check:
             print "Dataset %s has list of lumi sections to skip in catalog" % name
             lumisToSkip = LumiList(compactList=lumisToSkip)
         dlist = LumiList()
